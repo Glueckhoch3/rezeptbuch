@@ -23,7 +23,11 @@ class IngredientSchema(Schema):
     )
     name = fields.String(
         required=True,
-        validate=validate.Length(min=1, max=200, error="Ingredient name is required."),
+        validate=validate.Length(
+            min=1,
+            max=200,
+            error="Ingredient name must be between 1 and 200 characters.",
+        ),
     )
 
 
