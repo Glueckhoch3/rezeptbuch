@@ -32,11 +32,32 @@ The target deployment uses three containers:
 
 The frontend talks to the backend over HTTP. The backend owns validation, persistence rules, and API shape. The database stores recipe data and related records.
 
-When the implementation is available, the architecture should be described here with a simple diagram and the main request flow for:
-- list recipes
-- create recipe
-- update recipe
-- delete recipe
+```
+ Browser
+   │  http (/, /recipes/...)
+   ▼
+┌──────────────┐   /api/*  proxy    ┌──────────────┐   SQL    ┌──────────────┐
+│  frontend    │ ─────────────────▶ │   backend    │ ───────▶ │  PostgreSQL  │
+│ nginx + SPA  │ ◀───────────────── │ Flask + ORM  │ ◀─────── │     (db)     │
+│  (port 80)   │     JSON           │  (port 5000) │  rows    │ (port 5432)  │
+└──────────────┘                    └──────────────┘          └──────────────┘
+```
+
+In production nginx serves the built React app and proxies `/api` to the
+backend, so the browser uses a single origin. In development the Vite dev
+server (port 5173) proxies `/api` to the backend instead.
+
+Main request flows (all JSON over HTTP):
+- **list recipes** — `GET /api/recipes` → backend queries all recipes (newest
+  first) → serialized array.
+- **create recipe** — `POST /api/recipes` → schema validation → service inserts
+  recipe + ordered ingredients/instructions → `201` with the new recipe.
+- **update recipe** — `PUT /api/recipes/{id}` → validation → service replaces
+  fields and child collections → `200` with the updated recipe.
+- **delete recipe** — `DELETE /api/recipes/{id}` → service deletes recipe
+  (children cascade) → `204`.
+
+The full contract is specified in [`api-doc.yaml`](api-doc.yaml).
 
 ## Service boundaries
 Frontend responsibilities:
@@ -55,14 +76,11 @@ Database responsibilities:
 - persist recipes, ingredients, and work instructions
 - support schema migrations and safe data updates
 
-## Implementation decisions to record in ADRs
-Use ADRs for decisions that affect the long-term shape of the system, such as:
-- API route structure
-- data model normalization
-- migration strategy
-- Docker composition and networking
-- validation libraries
-- frontend state management strategy
+## Implementation decisions (ADRs)
+Durable decisions are recorded in `.github/decisions/`:
+- [0001](../.github/decisions/0001-record-architecture-decision.md) — ADR template
+- [0002](../.github/decisions/0002-data-model-and-api-shape.md) — data model and REST API shape
+- [0003](../.github/decisions/0003-stack-and-container-topology.md) — technology stack and container topology
 
 ## Development setup
 Expected local setup pattern:
@@ -103,3 +121,8 @@ Record decisions in `.github/decisions/` using one file per decision. The first 
 
 ## Change log
 Track only user-visible or architecture-changing updates here. Keep entries concise and dated.
+
+- 2026-06-15 — Initial implementation: Flask CRUD API (recipes, ingredients,
+  ordered instructions) with Marshmallow validation and Alembic migrations;
+  React + Vite frontend with list/detail/create/edit/delete flows; PostgreSQL;
+  Docker Compose for the full stack; backend and frontend test suites.
