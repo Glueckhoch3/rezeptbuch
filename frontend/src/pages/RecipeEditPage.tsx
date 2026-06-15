@@ -16,6 +16,12 @@ export function RecipeEditPage() {
   const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
+    if (!Number.isFinite(recipeId)) {
+      setError(new ApiError('Invalid recipe id.', 400));
+      setLoading(false);
+      return;
+    }
+
     fetchRecipe(recipeId)
       .then((recipe) =>
         setInitial({
