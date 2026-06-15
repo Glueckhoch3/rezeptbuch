@@ -46,6 +46,9 @@ def register_cli(app: Flask) -> None:
     @app.cli.command("seed")
     def seed() -> None:
         """Insert a small set of example recipes for local development."""
+        if Recipe.query.first() is not None:
+            click.echo("Recipes already exist; skipping seeding.")
+            return
         for recipe in SEED_RECIPES:
             create_recipe(recipe)
         click.echo(f"Seeded {len(SEED_RECIPES)} recipes.")
