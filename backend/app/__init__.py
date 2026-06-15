@@ -10,12 +10,12 @@ from .extensions import db, migrate
 from .errors import register_error_handlers
 
 
-def create_app(config: Config | None = None) -> Flask:
+def create_app(config: type[Config] | None = None) -> Flask:
     """Create and configure a Flask application instance.
 
     Args:
-        config: Optional configuration object. When omitted the configuration
-            is resolved from environment variables via :func:`get_config`.
+        config: Optional configuration class. When omitted the configuration
+            class is resolved from environment variables via :func:`get_config`.
     """
     app = Flask(__name__)
     app.config.from_object(config or get_config())
