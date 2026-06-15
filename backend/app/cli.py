@@ -6,8 +6,8 @@ import click
 from flask import Flask
 
 from .extensions import db
+from .models import Recipe
 from .services import create_recipe
-
 SEED_RECIPES = [
     {
         "title": "Spaghetti Aglio e Olio",
