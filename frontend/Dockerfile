@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies based on the lockfile for reproducible builds.
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 RUN npm run build
