@@ -16,6 +16,12 @@ export function RecipeDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
+    if (!Number.isFinite(recipeId)) {
+      setError(new ApiError('Invalid recipe id.', 400));
+      setLoading(false);
+      return;
+    }
+
     fetchRecipe(recipeId)
       .then(setRecipe)
       .catch((e) => setError(e as ApiError))
