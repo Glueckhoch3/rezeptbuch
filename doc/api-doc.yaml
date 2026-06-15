@@ -1,0 +1,212 @@
+openapi: 3.0.3
+info:
+  title: rezeptbuch API
+  version: "0.1.0"
+  description: >
+    REST API for managing recipes. A recipe has a title, a description, a list
+    of ingredients (amount, unit, name) and an ordered list of work
+    instructions. All validation is performed by the backend.
+servers:
+  - url: http://localhost:5000/api
+    description: Local backend (direct)
+  - url: http://localhost:8080/api
+    description: Local frontend (nginx proxy)
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /recipes:
+    get:
+      summary: List all recipes (newest first)
+      responses:
+        "200":
+          description: Array of recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+    post:
+      summary: Create a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeInput"
+      responses:
+        "201":
+          description: Recipe created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "415":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /recipes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a recipe by id
+      responses:
+        "200":
+          description: The recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "404":
+          $ref: "#/components/responses/Error"
+    put:
+      summary: Replace a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeInput"
+      responses:
+        "200":
+          description: Updated recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "404":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+    delete:
+      summary: Delete a recipe
+      responses:
+        "204":
+          description: Deleted (no content)
+        "404":
+          $ref: "#/components/responses/Error"
+
+components:
+  schemas:
+    IngredientInput:
+      type: object
+      required: [name]
+      properties:
+        amount:
+          type: string
+          example: "200"
+        unit:
+          type: string
+          example: "g"
+        name:
+          type: string
+          example: "Flour"
+    InstructionInput:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          example: "Mix all dry ingredients."
+    RecipeInput:
+      type: object
+      required: [title, ingredients, instructions]
+      properties:
+        title:
+          type: string
+          example: "Pancakes"
+        description:
+          type: string
+          example: "Fluffy breakfast pancakes."
+        ingredients:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/IngredientInput"
+        instructions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/InstructionInput"
+    Ingredient:
+      allOf:
+        - $ref: "#/components/schemas/IngredientInput"
+        - type: object
+          properties:
+            position:
+              type: integer
+    Instruction:
+      allOf:
+        - $ref: "#/components/schemas/InstructionInput"
+        - type: object
+          properties:
+            step_number:
+              type: integer
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+        instructions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Instruction"
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    Error:
+      description: Error with a human-readable message
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Request failed validation; details map fields to messages
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Validation failed."
+            details:
+              title: ["Title is required."]
