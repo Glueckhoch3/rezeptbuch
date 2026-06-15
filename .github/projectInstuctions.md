@@ -1,5 +1,5 @@
 ---
-name: projectInstuctions
+name: projectInstructions
 description: "Use when: project-wide decisions, contribution rules, code style, and PR guidance."
 applyTo: "**"
 visibility: public
