@@ -51,7 +51,11 @@ class RecipeInputSchema(Schema):
 
     title = fields.String(
         required=True,
-        validate=validate.Length(min=1, max=200, error="Title is required."),
+        validate=validate.Length(
+            min=1,
+            max=200,
+            error="Title must be between 1 and 200 characters.",
+        ),
     )
     description = fields.String(load_default="")
     ingredients = fields.List(
