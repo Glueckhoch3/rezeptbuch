@@ -19,10 +19,16 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="dialog-overlay" role="dialog" aria-modal="true">
+    <div
+      className="dialog-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
+    >
       <div className="dialog">
-        <h2>{title}</h2>
-        <p>{message}</p>
+        <h2 id="confirm-dialog-title">{title}</h2>
+        <p id="confirm-dialog-message">{message}</p>
         <div className="dialog-actions">
           <button className="button" onClick={onCancel}>
             Cancel
