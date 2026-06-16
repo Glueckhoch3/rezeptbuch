@@ -18,11 +18,9 @@ In scope:
 - PostgreSQL database running in Docker
 - shared configuration through a root-level `.env` plus a checked-in `.env.example`
 
-Out of scope for the first implementation phase:
+Out of scope:
 - public internet exposure
-- multi-user permission systems
-- complex recommendation or shopping features
-- external identity provider integration
+- complex recommendation feature
 
 ## Architecture overview
 The target deployment uses three containers:
@@ -32,15 +30,23 @@ The target deployment uses three containers:
 
 The frontend talks to the backend over HTTP. The backend owns validation, persistence rules, and API shape. The database stores recipe data and related records.
 
-```
- Browser
-   │  http (/, /recipes/...)
-   ▼
-┌──────────────┐   /api/*  proxy    ┌──────────────┐   SQL    ┌──────────────┐
-│  frontend    │ ─────────────────▶ │   backend    │ ───────▶ │  PostgreSQL  │
-│ nginx + SPA  │ ◀───────────────── │ Flask + ORM  │ ◀─────── │     (db)     │
-│  (port 80)   │     JSON           │  (port 5000) │  rows    │ (port 5432)  │
-└──────────────┘                    └──────────────┘          └──────────────┘
+```mermaid
+graph LR
+    Browser["🌐 Browser"]
+    Frontend["Frontend<br/>nginx + SPA<br/>(port 80)"]
+    Backend["Backend<br/>Flask + ORM<br/>(port 5000)"]
+    Database["Database<br/>PostgreSQL<br/>(port 5432)"]
+    
+    Browser -->|http<br/>/, /recipes/...| Frontend
+    Frontend -->|/api/*<br/>proxy, JSON| Backend
+    Backend -->|JSON| Frontend
+    Backend -->|SQL| Database
+    Database -->|rows| Backend
+    
+    style Browser fill:#f0f0f0
+    style Frontend fill:#e8f4f8
+    style Backend fill:#e8f4f8
+    style Database fill:#e8f4f8
 ```
 
 In production nginx serves the built React app and proxies `/api` to the
