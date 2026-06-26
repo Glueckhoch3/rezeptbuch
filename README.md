@@ -9,6 +9,13 @@ Stack: **React** (Vite + TypeScript) frontend · **Flask** API backend ·
 
 > Course context: verteilte-systeme-hse10.
 
+## Docker Hub images
+
+| Service  | Image                                       |
+| -------- | ------------------------------------------- |
+| Frontend | `glueckhoch3/glueckhoch3:rezeptbuch-frnt-v1` |
+| Backend  | `glueckhoch3/glueckhoch3:rezeptbuch-back-v1` |
+
 ## Quick start (Docker)
 
 Prerequisites: Docker and Docker Compose. (If Docker requires `sudo` on your
