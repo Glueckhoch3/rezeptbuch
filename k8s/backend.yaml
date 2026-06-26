@@ -80,7 +80,7 @@ metadata:
   name: backend-service
 spec:
   selector:
-    app.kubernetes.io/name: backend
+    app: backend
   ports:
     - protocol: TCP
       port: 5000
