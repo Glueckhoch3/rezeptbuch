@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: glueckhoch3/glueckhoch3:rezeptbuch-back-v1
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: POSTGRES_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: POSTGRES_PASSWORD
+
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: POSTGRES_DB
+
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: postgres-url
+
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: postgres-port
+
+            - name: BACKEND_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: BACKEND_SECRET_KEY
+
+            - name: CORS_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: CORS_ORIGINS
+
+            - name: GUNICORN_WORKERS
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: GUNICORN_WORKERS
+
+            - name: SEED_ON_START
+              valueFrom:
+                secretKeyRef:
+                  name: application-secret
+                  key: SEED_ON_START
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app.kubernetes.io/name: backend
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
