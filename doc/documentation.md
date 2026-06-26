@@ -216,6 +216,41 @@ docker compose down -v
 
 **Note on volumes:** Volumes created by Docker Compose are deleted when running `compose down` because they are created dynamically by Compose and not declared as external. This is expected behavior for development. To persist data across `compose down`, define volumes as external in the `compose.yaml` file.
 
+### Option 3: Kubernetes with Minikube
+
+#### Prerequisites
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) installed
+- `kubectl` CLI installed
+
+#### Steps
+
+1. **Install and start Minikube:**
+   ```bash
+   minikube start
+   ```
+
+2. **Open the Minikube dashboard** (optional, in a separate terminal):
+   ```bash
+   minikube dashboard
+   ```
+
+3. **Create the application secret** from your `.env` file:
+   ```bash
+   kubectl create secret generic application-secret --from-env-file=.env
+   ```
+
+4. **Apply all Kubernetes manifests:**
+   ```bash
+   cd k8s
+   kubectl apply -f .
+   ```
+
+5. **Get the frontend service URL and open it in the browser:**
+   ```bash
+   minikube service frontend-service --url
+   ```
+   Copy the printed URL and open it in your browser.
+
 ## Testing strategy
 Use layered testing:
 - unit tests for validation and utility functions

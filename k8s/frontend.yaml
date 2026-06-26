@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: glueckhoch3/glueckhoch3:rezeptbuch-frnt-v1
+          image: glueckhoch3/glueckhoch3:rezeptbuch-frnt-v2
           env:
             - name: BACKEND_HOST
               valueFrom:
@@ -39,8 +39,8 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app.kubernetes.io/name: frontend
+    app: frontend
   ports:
     - protocol: TCP
-      port: 8080
-      targetPort: 8080
+      port: 80
+      targetPort: 80
