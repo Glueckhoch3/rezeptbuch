@@ -41,7 +41,7 @@ services:
     build: ./frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      - backend-service
     environment:
       BACKEND_HOST: backend-service
       BACKEND_PORT: 5000
