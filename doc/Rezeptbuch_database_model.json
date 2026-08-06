@@ -1,0 +1,458 @@
+{
+  "tables": [
+    {
+      "id": 0,
+      "name": "recipe",
+      "x": 167,
+      "y": 88,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 0,
+          "size": "",
+          "values": []
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 1,
+          "size": 255
+        },
+        {
+          "name": "decription",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "",
+          "id": 2,
+          "size": 65535
+        },
+        {
+          "name": "origin",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "",
+          "id": 3,
+          "size": 255
+        }
+      ],
+      "comment": "",
+      "indices": [],
+      "color": "#6360f7",
+      "uniqueConstraints": []
+    },
+    {
+      "id": 2,
+      "name": "tags",
+      "x": 642,
+      "y": 417.99999999999994,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 0,
+          "size": "",
+          "values": []
+        },
+        {
+          "name": "tag_name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 1,
+          "size": 63
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": [
+            "recipe_id",
+            "tag_name"
+          ],
+          "unique": false
+        }
+      ],
+      "color": "#ffe159",
+      "uniqueConstraints": []
+    },
+    {
+      "id": 3,
+      "name": "workstep",
+      "x": 665,
+      "y": -103,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 0,
+          "size": "",
+          "values": []
+        },
+        {
+          "name": "workstep",
+          "type": "INT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 1
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 2,
+          "size": 31
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 3,
+          "size": 65535,
+          "values": []
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": [
+            "recipe_id",
+            "workstep"
+          ],
+          "unique": false
+        }
+      ],
+      "color": "#89e667",
+      "uniqueConstraints": []
+    },
+    {
+      "id": "wqrl9YgAZe3q61B5xZ0t9",
+      "name": "ingredient_list",
+      "x": 794.0051249999999,
+      "y": 175.31012500000003,
+      "locked": false,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "unsigned": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "SXTqhoh1gR4GAZPicPbjL",
+          "size": "",
+          "values": []
+        },
+        {
+          "id": "Lq3upa04KCLJhEk2-CLvT",
+          "name": "ingredient_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": "",
+          "values": []
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": [
+            "recipe_id",
+            "ingredient_id"
+          ],
+          "unique": false
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    },
+    {
+      "id": "emRw5ZaC1Zx36UnptfHlR",
+      "name": "ingredient",
+      "x": 1263.8966249999999,
+      "y": 381.11150000000004,
+      "locked": false,
+      "fields": [
+        {
+          "name": "ingredient_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "unsigned": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "orv4ZW1W49sPhBpe8AH7Y",
+          "size": "",
+          "values": []
+        },
+        {
+          "id": "NrdeyQ09v_AMBTKb-Fl0n",
+          "name": "name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": 63
+        },
+        {
+          "id": "ZifZw_1pvPNhEQ7NzKYZ9",
+          "name": "unit",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": 31
+        },
+        {
+          "id": "wem-BcnKpyWLNfKSPyVQi",
+          "name": "type",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": 255
+        }
+      ],
+      "comment": "",
+      "indices": [],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    },
+    {
+      "id": "37us10kgYtTSV6YHxf_Br",
+      "name": "allergene",
+      "x": 1642.6108750000003,
+      "y": 177.94787500000007,
+      "locked": false,
+      "fields": [
+        {
+          "name": "ingredient_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "unsigned": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "_AwKcz9nrRcD89AXVJaaY",
+          "size": "",
+          "values": []
+        },
+        {
+          "id": "L8cpaG9aDJLRdlo3xAp_F",
+          "name": "allergene_name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": 255
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": [
+            "ingredient_id",
+            "allergene_name"
+          ],
+          "unique": false
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    }
+  ],
+  "relationships": [
+    {
+      "startTableId": 2,
+      "startFieldId": 0,
+      "endTableId": 0,
+      "endFieldId": 3,
+      "name": "fk_tags_recipe_id_recipe",
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action",
+      "id": 0,
+      "fields": [
+        {
+          "startFieldId": 0,
+          "endFieldId": 3
+        }
+      ]
+    },
+    {
+      "startTableId": 3,
+      "startFieldId": 0,
+      "endTableId": 0,
+      "endFieldId": 0,
+      "name": "fk_workstep_workstep_recipe",
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action",
+      "id": 1,
+      "fields": [
+        {
+          "startFieldId": 0,
+          "endFieldId": 0
+        }
+      ]
+    },
+    {
+      "id": "2xlsDEImMM-Sh1C4oDPQP",
+      "name": "fk_ingredient_list_ingredient_id_ingredient",
+      "startTableId": "wqrl9YgAZe3q61B5xZ0t9",
+      "endTableId": "emRw5ZaC1Zx36UnptfHlR",
+      "fields": [
+        {
+          "startFieldId": "Lq3upa04KCLJhEk2-CLvT",
+          "endFieldId": "orv4ZW1W49sPhBpe8AH7Y"
+        }
+      ],
+      "startFieldId": "Lq3upa04KCLJhEk2-CLvT",
+      "endFieldId": "orv4ZW1W49sPhBpe8AH7Y",
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": "3PmbVJh4glSq4vvLm_kzK",
+      "name": "fk_ingredient_list_recipe_id_recipe",
+      "startTableId": "wqrl9YgAZe3q61B5xZ0t9",
+      "endTableId": 0,
+      "fields": [
+        {
+          "startFieldId": "SXTqhoh1gR4GAZPicPbjL",
+          "endFieldId": 0
+        }
+      ],
+      "startFieldId": "SXTqhoh1gR4GAZPicPbjL",
+      "endFieldId": 0,
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    },
+    {
+      "id": "6xRKnZIbIj2hfRKSTCuh5",
+      "name": "fk_allergene_ingredient_id_ingredient",
+      "startTableId": "37us10kgYtTSV6YHxf_Br",
+      "endTableId": "emRw5ZaC1Zx36UnptfHlR",
+      "fields": [
+        {
+          "startFieldId": "_AwKcz9nrRcD89AXVJaaY",
+          "endFieldId": "orv4ZW1W49sPhBpe8AH7Y"
+        }
+      ],
+      "startFieldId": "_AwKcz9nrRcD89AXVJaaY",
+      "endFieldId": "orv4ZW1W49sPhBpe8AH7Y",
+      "cardinality": "many_to_one",
+      "updateConstraint": "No action",
+      "deleteConstraint": "No action"
+    }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "database": "generic",
+  "types": [],
+  "title": "Library schema"
+}
