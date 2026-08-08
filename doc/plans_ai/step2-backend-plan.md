@@ -58,16 +58,20 @@ This is a **hybrid** layout: `core/` holds cross-cutting infrastructure, everyth
 
 | Domain | Endpoints | Notes |
 |---|---|---|
-| `recipe` | `GET/POST /api/recipes`, `GET/PUT/DELETE /api/recipes/{id}` | kept from today; response now nests `worksteps`, `ingredients` (with `amount`/`unit_override`), `tags` |
-| `ingredient` | `GET/POST /api/ingredients`, `GET/PUT/DELETE /api/ingredients/{id}` | new — master CRUD, needed so the frontend can list/reuse/autocomplete ingredients across recipes |
-| `tag` | `GET/POST /api/tags`, `DELETE /api/tags/{id}` | new — no `PUT`; renaming a tag is delete+recreate, kept intentionally simple |
-| `allergen` | `GET/POST /api/allergens`, `DELETE /api/allergens/{id}` | new, same rationale as `tag` |
-| `search` | `GET /api/recipes/search?tag=&ingredient=&allergen=&q=` | new — single endpoint, query params combine with AND semantics, avoids a combinatorial explosion of endpoints |
+| `recipe` | `GET/POST /api/recipes`, `GET/PATCH/DELETE /api/recipes/{id}` | `GET /api/recipes` paginated (`page`/`page_size`, keyset on `created_at,id`); response now nests `worksteps`, `ingredients` (with `amount`/`unit`), `tags`; `PATCH` replaces `PUT` — see partial-patch decision below |
+| `ingredient` | `GET/POST /api/ingredients`, `GET/PUT/DELETE /api/ingredients/{id}` | new — master CRUD, needed so the frontend can list/reuse/autocomplete ingredients across recipes; `GET` list paginated and supports `?q=` prefix search for autocomplete |
+| `tag` | `GET/POST /api/tags`, `DELETE /api/tags/{id}` | new — no `PUT`/`PATCH`; renaming a tag is delete+recreate, kept intentionally simple; `GET` list paginated and supports `?q=` prefix search for autocomplete |
+| `allergen` | `GET/POST /api/allergens`, `DELETE /api/allergens/{id}` | new, same rationale as `tag`; `GET` list paginated |
+| `search` | `GET /api/recipes/search?tag=&ingredient=&allergen=&q=&page=&page_size=` | new — single endpoint, query params combine with AND semantics, avoids a combinatorial explosion of endpoints; paginated like the plain recipe list |
 | — | `GET /api/health` | unchanged |
+
+### Pagination shape
+
+All list endpoints (`recipe`, `ingredient`, `tag`, `allergen`, `search`) accept `page`/`page_size` (default `page_size` capped, e.g. 20/max 100) and return `{"items": [...], "page": n, "page_size": n, "total": n}`. Exact page-size defaults and whether `ingredient`/`tag` autocomplete uses the same paginated shape or a lighter-weight top-N response is informed by the step-3 frontend sketch (autocomplete widgets typically want "top N matches", not a full pager) — finalize the response envelope for `?q=` autocomplete lookups when step 3's `IngredientPicker`/`TagPicker` components are designed, but the pagination mechanism itself ships now rather than being retrofitted later.
 
 ### Payload shape decision
 
-`POST`/`PUT /api/recipes` accepts each ingredient line as **either** `ingredient_id` (reuse an existing master row) **or** a bare `name` string (the service resolves-or-creates the master `ingredient` row by name). This avoids forcing a two-step "create the ingredient first, then the recipe" UX while still building up the shared ingredient master table organically. Example request body:
+`POST /api/recipes` accepts each ingredient line as **either** `ingredient_id` (reuse an existing master row) **or** a bare `name` string (the service resolves-or-creates the master `ingredient` row by name). This avoids forcing a two-step "create the ingredient first, then the recipe" UX while still building up the shared ingredient master table organically. Example request body:
 
 ```json
 {
@@ -76,8 +80,8 @@ This is a **hybrid** layout: `core/` holds cross-cutting infrastructure, everyth
   "origin": "US",
   "tags": ["breakfast", "quick"],
   "ingredients": [
-    { "ingredient_id": "…", "amount": "200", "unit_override": "g" },
-    { "name": "Baking powder", "amount": "1", "unit_override": "tsp" }
+    { "ingredient_id": "…", "amount": "200", "unit": "g" },
+    { "name": "Baking powder", "amount": "1", "unit": "tsp" }
   ],
   "worksteps": [
     { "title": "Mix", "description": "Combine dry ingredients." },
@@ -86,6 +90,10 @@ This is a **hybrid** layout: `core/` holds cross-cutting infrastructure, everyth
 }
 ```
 
+### `PATCH /api/recipes/{id}`: partial-patch semantics
+
+Reversing ADR 0002's original "simple to reason about" full-replace rationale: `PUT` is replaced with `PATCH`, and only the top-level fields present in the request body are updated. For the nested collections (`ingredients`, `worksteps`, `tags`), "present" is collection-level, not element-level — supplying `ingredients` still replaces the whole ingredient list wholesale (matching `services.py`'s existing collection-replace behavior noted in `CLAUDE.md`), it just means the caller can omit `ingredients` entirely to leave it untouched, whereas today's full-replace `PUT` would have required resending the complete recipe on every edit (e.g. renaming just the title). Validation schema becomes `RecipePatchSchema` with all fields optional; `RecipeInputSchema` (all fields required) remains for `POST`.
+
 ## OpenAPI documentation update
 
 `doc/api-doc.yaml` gets:
@@ -93,6 +101,15 @@ This is a **hybrid** layout: `core/` holds cross-cutting infrastructure, everyth
 - Updated `Recipe`/`RecipeInput` schemas reflecting the nested `worksteps`/`ingredients`/`tags` shape above.
 - New path blocks for `/api/ingredients`, `/api/ingredients/{id}`, `/api/tags`, `/api/tags/{id}`, `/api/allergens`, `/api/allergens/{id}`, `/api/recipes/search`.
 - Existing `servers` entries unchanged.
+
+## Rate limiting / abuse protection
+
+Reversing the earlier "out of scope, local-network-only" call: a baseline rate limit is added to write endpoints (`POST`/`PATCH`/`PUT`/`DELETE` across all domains) even though the app has no auth and no internet exposure. Rationale: "secure by default" is treated as a habit to build, not a control sized to this specific deployment's threat model — a local-network app today can end up reachable more broadly tomorrow (a misconfigured port-forward, a container exposed by a different compose file), and the cost of the control is low.
+
+- **Mechanism**: `Flask-Limiter`, in-memory storage (no Redis dependency — matches the app's current lack of a cache/session store), keyed by remote address.
+- **Limits**: generous defaults appropriate for a trusted local network, not a public API — e.g. 60 write requests/minute per IP, with `/api/health` and all `GET` endpoints exempt. Exact numbers are a tuning detail for step 2's execution, not this plan.
+- **Response**: `429` normalized through the existing `errors.py` handler shape (`{"error": "...", "details": {...}}`), consistent with every other error path.
+- **Documentation**: recorded as its own ADR, `.github/decisions/0005-baseline-rate-limiting.md`, explicitly stating the "secure by default" rationale so a future reader doesn't mistake this for defense against a real observed threat.
 
 ## Environment variable review
 
@@ -119,11 +136,13 @@ backend/tests/
     test_router.py
 ```
 
-Each domain gets router-level (integration) tests matching the style of today's `tests/test_api.py`; `service.py` gets unit tests where business logic (e.g. resolve-or-create ingredient by name) is non-trivial. The SQLite-vs-Postgres UUID type-decorator introduced in step 1 must be validated here first, since all existing tests run against the in-memory SQLite `TestConfig`.
+Each domain gets router-level (integration) tests matching the style of today's `tests/test_api.py`; `service.py` gets unit tests where business logic (e.g. resolve-or-create ingredient by name) is non-trivial. The SQLite-vs-Postgres UUID type-decorator introduced in step 1 must be validated here first, since all existing tests run against the in-memory SQLite `TestConfig`. Each domain's router tests also cover pagination (`page`/`page_size` params, envelope shape) and, for `recipe`, the `PATCH` partial-update behavior (omitted fields left untouched). Rate limiting gets its own focused test (e.g. exceed the write-endpoint limit, assert `429` with the normalized error shape) rather than being asserted redundantly in every domain's test file.
 
 ## ADR
 
 Add one new ADR, `.github/decisions/0004-schema-v2-and-modular-backend.md`, covering both the schema v2 decision (step 1) and this backend restructuring together — they were decided together and this project's scale doesn't warrant splitting them into two ADRs. It should reference `step1-database-plan.md` and this document, and record the migration-replaces-0001 decision plus the domain-folder layout choice.
+
+Add a second new ADR, `.github/decisions/0005-baseline-rate-limiting.md`, covering the rate-limiting decision above on its own — it's an orthogonal security-posture call, not part of the schema/layout decision.
 
 ## Critical files
 
@@ -133,11 +152,8 @@ Add one new ADR, `.github/decisions/0004-schema-v2-and-modular-backend.md`, cove
 - `backend/app/schemas.py` — to be split into per-domain `schemas.py` files
 - `doc/api-doc.yaml` — OpenAPI contract to update
 
-## Open questions / explicitly deferred
+## Resolved decisions (previously open)
 
-- Whether `ingredient`/`tag`/`allergen` list endpoints need pagination — deferred until data volume warrants it (same as step 1).
-Answer: The projekt leader should give a frontend sketch first, so the extend of the pagination can be deffered from it. The pagination should then be included in the changes.
-- Whether `PUT /api/recipes/{id}` should move from full-replace to partial-patch semantics now that the payload is more complex — kept as full-replace for now, consistent with ADR 0002's existing rationale ("simple to reason about").
-Answer: Yes this PUT should use partial-patch semantics.
-- Rate limiting / abuse protection on write endpoints — out of scope; this remains a local-network-only app per `doc/documentation.md`'s stated scope.
-For security reasons a rate limiting / abuse protection meassure on the endpoints must be considered and the decision documented as in europe "secure by default" strategy is demanded (not for open source but it is still a good habit).
+- **Pagination on `ingredient`/`tag`/`allergen` list endpoints.** Included (see "Pagination shape" above) rather than deferred. The exact page size and whether autocomplete gets a lighter "top N" response shape instead of the full paginated envelope should be finalized against a frontend sketch (step 3) before implementation, so the API isn't over- or under-built relative to the actual UI.
+- **`PUT` vs. partial-patch on `/api/recipes/{id}`.** Moved to partial-patch semantics — see the "`PATCH /api/recipes/{id}`" section above. This reverses ADR 0002's original full-replace rationale.
+- **Rate limiting / abuse protection.** Added as a baseline control on all write endpoints despite the local-network-only deployment — see "Rate limiting / abuse protection" above. Framed explicitly as a "secure by default" habit rather than a response to an observed threat, and documented in its own ADR (0005) so that rationale isn't lost.

@@ -36,13 +36,13 @@ frontend/src/
         IngredientFieldArray.tsx
       types.ts
     ingredients/
-      api.ts / hooks.ts
+      api.ts / hooks.ts          # includes a debounced fetchIngredients(query) hitting GET /api/ingredients?q=
       components/
-        IngredientPicker.tsx    # autocomplete, reused inside RecipeForm
+        IngredientPicker.tsx    # server-side debounced autocomplete, reused inside RecipeForm
       types.ts
     tags/
-      api.ts / hooks.ts
-      components/TagPicker.tsx
+      api.ts / hooks.ts          # includes a debounced fetchTags(query) hitting GET /api/tags?q=
+      components/TagPicker.tsx   # server-side debounced autocomplete
       types.ts
     allergens/
       api.ts / hooks.ts
@@ -96,6 +96,7 @@ frontend/src/
 - **Responsive approach**: mobile-first CSS, flex/grid layouts with breakpoints defined once in `variables.css` (e.g. `--bp-md: 768px`); no separate mobile-only components.
 - **Color & typography**: extract the current ad hoc colors in `global.css` into CSS custom properties (`--color-primary`, `--color-danger` for delete actions, `--color-muted` for meta text); keep the system font stack — no webfont dependency.
 - **Component states**: explicitly design loading (TanStack Query `isPending`), empty ("no recipes yet", "no results for this filter"), and error states (reuse the existing `ErrorBanner.tsx`) for every list/detail view.
+- **Pagination**: since step 2's list endpoints (`recipes`, `ingredients`, `tags`, `allergens`, `search`) are paginated from the start, `RecipeListPage`/`IngredientListPage`/`TagListPage`/`AllergenListPage`/`SearchPage` all need a pager control (page number + next/previous, driven by the `{items, page, page_size, total}` envelope); `useRecipes()`-style hooks take a `page` param and TanStack Query's `keepPreviousData` avoids a loading flash between pages.
 
 ## Security-without-auth checklist
 
@@ -113,11 +114,8 @@ frontend/src/
 - `frontend/package.json` — new dependencies
 - `frontend/nginx.conf` — CSP/security header additions
 
-## Open questions / explicitly deferred
+## Resolved decisions (previously open)
 
-- Whether ingredient/tag autocomplete needs server-side debounced search vs. client-side filtering of a full list — depends on eventual data volume; start with client-side filtering, revisit once `/api/ingredients` and `/api/tags` responses grow large.
-Answer: Since I expect a large database volume and low request frequency the serverside debouncing should be preferred.
-- Dark mode / theming — not requested, not planned; the CSS custom property extraction in `variables.css` makes it easy to add later if desired.
-Answer: since a light mode is used more often on mobile devices, a darkmode is not part of the requirements.
-- E2E testing (Playwright/Cypress) — none exists today; out of scope for this remodel, Vitest + Testing Library component tests continue to be the coverage strategy.
-Answer: E2E Testing is done manually here, this includes starting and using the application. Wrong input should be therefor covered in earlier tests.
+- **Ingredient/tag autocomplete: server-side vs. client-side.** Server-side, debounced — not client-side filtering of a full list. Given an expected large ingredient/tag volume but low request frequency, shipping the whole list to the client doesn't scale, while the request cost of debounced server queries stays cheap at this traffic level. `IngredientPicker`/`TagPicker` debounce keystrokes (e.g. 250–300ms) and call the `?q=` prefix-search endpoints from step 2 rather than filtering a locally-cached full list. This also means `useIngredients()`/`useTags()` need a query-param-aware TanStack Query hook (`useIngredientSearch(query)`) distinct from the plain paginated list hook used by `IngredientListPage`/`TagListPage`.
+- **Dark mode / theming.** Confirmed out of scope — light mode is the primary target since mobile usage (where light mode dominates) is expected to be common. No change to the plan; `variables.css` still isolates the color tokens so this remains easy to revisit later if requirements change.
+- **E2E testing.** Confirmed manual — no Playwright/Cypress suite is added. Manual E2E means actually starting and using the application end-to-end (not just running `npm test`) before calling a change done, per this repo's UI-testing guidance; malformed-input handling stays covered by Vitest + Testing Library component tests and the backend's own validation tests, not by the manual pass.
