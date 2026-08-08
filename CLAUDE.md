@@ -58,6 +58,7 @@ pre-commit install                            # installs pre-commit + pre-push h
 - `pre-commit` stage: `black --check`, `flake8` (backend), `eslint`, `prettier --check` (frontend) — scoped to staged files, skipped when not relevant.
 - `pre-push` stage: `pytest` (backend), `npm test`, `tsc --noEmit` (frontend) — full suites, always run on push. (Not `npm run build`: `frontend/dist/` is committed, and a full build would rewrite its hashed filenames on every push.)
 - Bypass in an emergency with `git commit --no-verify` / `git push --no-verify`; fix and re-run normally afterward.
+- The hooks are `language: system` — they call `black`/`flake8`/`pytest`/`npm` from whatever `PATH` is active in the shell running `git commit`/`git push`. Activate the backend venv (`source backend/.venv/bin/activate`) in that shell first, or the backend hooks fail with "command not found" instead of a real check result.
 
 ## Architecture
 
