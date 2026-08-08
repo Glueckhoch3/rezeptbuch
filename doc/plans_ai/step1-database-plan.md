@@ -109,5 +109,10 @@ UUID primary keys should use a small type-decorator so the same model code works
 ## Open questions / explicitly deferred
 
 - Full-text search on `recipe.title`/`description` (e.g. Postgres `tsvector` + GIN index) — not needed yet, revisit once the search/filter feature (step 2) is in place and recipe volume grows.
+Answer: Prepare for a full text search on recipe.title/description. Add a recipe by tag and ingredient filter where the tag or ingredient can be typed and autofilled from a list of matching names (like: carr -> carrot; veg -> vegan, vegetarian).
+
 - Pagination on list endpoints — deferred until recipe/ingredient counts make it necessary.
+Answer: Also plan to include pagination on list endpoints from the beginning.
+
 - Whether `ingredient.type` should become its own lookup table instead of a free string — revisit if the app ever needs to filter/group by ingredient type; not worth the complexity now.
+Answer: remove ingredient type and replace it with a ingredient.description field, also move the unit field into the recipe_ingredient list with the amount that has to be added.

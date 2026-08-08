@@ -136,5 +136,8 @@ Add one new ADR, `.github/decisions/0004-schema-v2-and-modular-backend.md`, cove
 ## Open questions / explicitly deferred
 
 - Whether `ingredient`/`tag`/`allergen` list endpoints need pagination — deferred until data volume warrants it (same as step 1).
+Answer: The projekt leader should give a frontend sketch first, so the extend of the pagination can be deffered from it. The pagination should then be included in the changes.
 - Whether `PUT /api/recipes/{id}` should move from full-replace to partial-patch semantics now that the payload is more complex — kept as full-replace for now, consistent with ADR 0002's existing rationale ("simple to reason about").
+Answer: Yes this PUT should use partial-patch semantics.
 - Rate limiting / abuse protection on write endpoints — out of scope; this remains a local-network-only app per `doc/documentation.md`'s stated scope.
+For security reasons a rate limiting / abuse protection meassure on the endpoints must be considered and the decision documented as in europe "secure by default" strategy is demanded (not for open source but it is still a good habit).

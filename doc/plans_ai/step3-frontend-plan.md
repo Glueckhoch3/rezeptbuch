@@ -116,5 +116,8 @@ frontend/src/
 ## Open questions / explicitly deferred
 
 - Whether ingredient/tag autocomplete needs server-side debounced search vs. client-side filtering of a full list — depends on eventual data volume; start with client-side filtering, revisit once `/api/ingredients` and `/api/tags` responses grow large.
+Answer: Since I expect a large database volume and low request frequency the serverside debouncing should be preferred.
 - Dark mode / theming — not requested, not planned; the CSS custom property extraction in `variables.css` makes it easy to add later if desired.
+Answer: since a light mode is used more often on mobile devices, a darkmode is not part of the requirements.
 - E2E testing (Playwright/Cypress) — none exists today; out of scope for this remodel, Vitest + Testing Library component tests continue to be the coverage strategy.
+Answer: E2E Testing is done manually here, this includes starting and using the application. Wrong input should be therefor covered in earlier tests.
