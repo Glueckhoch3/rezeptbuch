@@ -10,12 +10,17 @@ Status: proposal — superseded [`0002-data-model-and-api-shape.md`](../../.gith
 
 | Question | Decision | Rationale |
 |---|---|---|
-| `ingredient_list` join table: plain link or own entity? | Rename to `recipe_ingredient`, give it its own PK plus `amount`/`unit_override` | A shared ingredient still needs a per-recipe quantity ("200g flour in *this* recipe") — a bare link table can't carry that |
+| `ingredient_list` join table: plain link or own entity? | Rename to `recipe_ingredient`, give it its own PK plus `amount`/`unit` | A shared ingredient still needs a per-recipe quantity and unit ("200g flour in *this* recipe") — a bare link table can't carry that |
 | Tags: shared table or a string per recipe row? | Shared `tag` master + `recipe_tag` join | Enables autocomplete and "browse by tag" without free-text typos fragmenting the tag space ("Vegan" vs "vegan") |
 | Allergens: shared table or free text per ingredient? | Shared `allergen` master + `ingredient_allergen` join | Same reasoning as tags — allergens are a small, roughly fixed vocabulary that benefits from consistency for filtering |
 | Primary key strategy | UUID everywhere, generated **application-side** (`uuid.uuid4()` as the SQLAlchemy column default) | Matches the JSON model's intent (non-guessable IDs) without requiring a Postgres extension (`pgcrypto`/`uuid-ossp`) — keeps the existing SQLite in-memory test setup working unmodified |
 | Timestamps | `created_at`/`updated_at` only on `recipe` and `ingredient` | Only entities with an independent lifecycle need audit fields; pure join tables stay lean |
 | Foreign key cascade behavior | Explicit per relationship (see below) | The raw JSON leaves every FK at "No action", which is a latent bug, not a real decision |
+| Full-text search on `recipe.title`/`description` | Built in now, not deferred | Search is core to a recipe hub; adding a `tsvector` column later means a backfill migration against live data — cheaper to include it in the first migration while the table is empty |
+| Tag/ingredient filtering & autocomplete | `tag.name`/`ingredient.name` indexed for prefix search; recipes filterable by tag and by ingredient | Lets the frontend type-ahead ("carr" → carrot, "veg" → vegan/vegetarian) against the shared vocabularies this model already introduces |
+| List endpoint pagination | Included from the first migration | Avoids a later endpoint-shape change and index rework; cheap to add while the schema is still being designed |
+| Where does the unit live? | Only on `recipe_ingredient.unit`, not on `ingredient` | A recipe line always states its own unit — a shared "default unit with per-recipe override" adds a fallback layer nothing actually needs |
+| Ingredient categorization | `ingredient.description` (free text), replacing `ingredient.type` | An open description is more useful than a loose category string that nothing filters or groups by |
 
 ## Finalized tables
 
@@ -26,8 +31,11 @@ Status: proposal — superseded [`0002-data-model-and-api-shape.md`](../../.gith
 | `title` | VARCHAR(255) NOT NULL | |
 | `description` | TEXT NOT NULL DEFAULT '' | fixes the `decription` typo in the JSON model |
 | `origin` | VARCHAR(255) NULL | |
+| `search_vector` | TSVECTOR NOT NULL | generated column (`GENERATED ALWAYS AS (...) STORED`) combining `title` (weight A) and `description` (weight B); GIN index `ix_recipe_search_vector` |
 | `created_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | |
+
+Index: GIN on `search_vector`, plus `(created_at, id)` to support stable keyset pagination on the default recipe listing order.
 
 ### `workstep` (replaces `instructions`)
 | Column | Type | Notes |
@@ -45,11 +53,10 @@ Constraints: `UNIQUE (recipe_id, step_number)`. Index: `(recipe_id, step_number)
 |---|---|---|
 | `id` | UUID, PK | |
 | `name` | VARCHAR(120) NOT NULL | bumped from VARCHAR(63) |
-| `default_unit` | VARCHAR(31) NULL | renamed from the JSON's `unit`; nullable because a master ingredient may not have one fixed unit — the actual per-recipe unit lives on `recipe_ingredient.unit_override` |
-| `type` | VARCHAR(120) NULL | loose categorical string (e.g. "produce", "dairy"); not an enum/table — kept simple |
+| `description` | TEXT NULL | replaces the JSON's `type` column and this plan's earlier `default_unit`/`type` fields — free-text notes about the ingredient; carries no unit, since unit is always stated per-recipe (see `recipe_ingredient` below) |
 | `created_at` / `updated_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | |
 
-Constraint: `UNIQUE (lower(name))` — prevents duplicate master rows differing only in case.
+Constraint: `UNIQUE (lower(name))` — prevents duplicate master rows differing only in case. Index: `name` with `text_pattern_ops` (or equivalent trigram index) to serve prefix-match autocomplete efficiently.
 
 ### `recipe_ingredient` (replaces `ingredient_list`)
 | Column | Type | Notes |
@@ -58,13 +65,13 @@ Constraint: `UNIQUE (lower(name))` — prevents duplicate master rows differing 
 | `recipe_id` | UUID NOT NULL, FK → `recipe.id` | `ON DELETE CASCADE` |
 | `ingredient_id` | UUID NOT NULL, FK → `ingredient.id` | `ON DELETE RESTRICT` — see cascade rules below |
 | `amount` | VARCHAR(50) NOT NULL DEFAULT '' | string, not numeric — allows "1/2", "a pinch" (matches the current app's existing choice) |
-| `unit_override` | VARCHAR(31) NULL | per-recipe unit when it differs from `ingredient.default_unit` |
+| `unit` | VARCHAR(31) NOT NULL DEFAULT '' | renamed from `unit_override`; now the sole source of unit for this ingredient line, since `ingredient` no longer carries a default unit |
 | `position` | INT NOT NULL DEFAULT 0 | display order, mirrors the current app's `Ingredient.position` |
 
 Constraint: `UNIQUE (recipe_id, ingredient_id)` — the same ingredient listed twice in one recipe is a data error. Indexes: `(recipe_id)`, `(ingredient_id)` (for "recipes using ingredient X").
 
 ### `tag` (shared master) + `recipe_tag` (join)
-- `tag`: `id` UUID PK, `name` VARCHAR(63) NOT NULL, `UNIQUE (lower(name))`.
+- `tag`: `id` UUID PK, `name` VARCHAR(63) NOT NULL, `UNIQUE (lower(name))`, index on `name` (`text_pattern_ops`) for prefix-match autocomplete.
 - `recipe_tag`: `recipe_id` FK → `recipe.id` (`CASCADE`), `tag_id` FK → `tag.id` (`CASCADE`); composite PK `(recipe_id, tag_id)` — no surrogate id needed, it's a pure link. Index on `(tag_id)` for "recipes with tag X".
 
 ### `allergen` (shared master) + `ingredient_allergen` (join, replaces `allergene`)
@@ -82,11 +89,14 @@ The raw JSON model leaves every relationship at "No action". This plan fixes tha
 ## Rationale vs. the raw JSON model
 
 - Fixed `decription` → `description` typo on `recipe`.
-- `ingredient_list` → `recipe_ingredient`: needed its own identity plus `amount`/`unit_override`, otherwise "200g flour in recipe X" is unexpressible once ingredients are shared.
+- `ingredient_list` → `recipe_ingredient`: needed its own identity plus `amount`/`unit`, otherwise "200g flour in recipe X" is unexpressible once ingredients are shared.
 - `tags` and `allergene` promoted from per-row strings to master + join tables: enables autocomplete, prevents typo-fragmented tag/allergen spaces, and is a prerequisite for the search/filter feature planned in step 2.
 - Added `created_at`/`updated_at` on `recipe` and `ingredient` (independent lifecycle); omitted on pure join tables to keep them lean.
 - All FKs given explicit cascade behavior instead of "No action".
 - Column sizes revisited: `workstep.title` 31→120, `ingredient.name` 63→120 — both were unrealistically short for real content.
+- Dropped `ingredient.default_unit`/`unit_override` split in favor of a single `recipe_ingredient.unit` — unit is always per-recipe, so the fallback layer was unused complexity.
+- Replaced `ingredient.type` with `ingredient.description` — an open note is more useful than a category string nothing filters on.
+- Added `recipe.search_vector` (generated `tsvector` + GIN index) and prefix-search indexes on `tag.name`/`ingredient.name` to support full-text recipe search and tag/ingredient autocomplete from day one.
 
 ## Migration strategy
 
@@ -106,13 +116,8 @@ UUID primary keys should use a small type-decorator so the same model code works
 - `.github/decisions/0002-data-model-and-api-shape.md` — ADR this plan supersedes
 - `doc/api-doc.yaml` — API contract to be updated in step 2
 
-## Open questions / explicitly deferred
+## Resolved decisions (previously open)
 
-- Full-text search on `recipe.title`/`description` (e.g. Postgres `tsvector` + GIN index) — not needed yet, revisit once the search/filter feature (step 2) is in place and recipe volume grows.
-Answer: Prepare for a full text search on recipe.title/description. Add a recipe by tag and ingredient filter where the tag or ingredient can be typed and autofilled from a list of matching names (like: carr -> carrot; veg -> vegan, vegetarian).
-
-- Pagination on list endpoints — deferred until recipe/ingredient counts make it necessary.
-Answer: Also plan to include pagination on list endpoints from the beginning.
-
-- Whether `ingredient.type` should become its own lookup table instead of a free string — revisit if the app ever needs to filter/group by ingredient type; not worth the complexity now.
-Answer: remove ingredient type and replace it with a ingredient.description field, also move the unit field into the recipe_ingredient list with the amount that has to be added.
+- **Full-text search on `recipe.title`/`description`.** Build it in now rather than deferring: `recipe.search_vector` (generated `tsvector`, GIN-indexed) covers title/description search. Recipes are additionally filterable by tag and by ingredient, with both `tag.name` and `ingredient.name` typeable and autocompleted from a prefix match against the master vocabularies (e.g. "carr" → carrot; "veg" → vegan, vegetarian). See the `tag`/`ingredient` table definitions above for the supporting indexes; the query-side implementation (the `search` module) is step 2's concern.
+- **Pagination on list endpoints.** Included from the first migration rather than deferred — `recipe(created_at, id)` is indexed for keyset pagination; `tag`/`ingredient`/`allergen` list endpoints paginate off their existing unique `name` indexes. Endpoint-level pagination shape is defined in step 2.
+- **`ingredient.type`.** Removed rather than promoted to a lookup table. Replaced with `ingredient.description` (free text). The per-recipe `unit` that used to have a master-level default (`ingredient.default_unit` + `recipe_ingredient.unit_override`) is now solely `recipe_ingredient.unit` — see the `ingredient`/`recipe_ingredient` table definitions above.
