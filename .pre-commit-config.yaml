@@ -1,0 +1,59 @@
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: backend-black
+        name: backend black --check
+        entry: bash -c 'cd backend && black --check app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: backend-flake8
+        name: backend flake8
+        entry: bash -c 'cd backend && flake8 app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: frontend-eslint
+        name: frontend eslint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/src/
+        pass_filenames: false
+
+      - id: frontend-format
+        name: frontend prettier --check
+        entry: bash -c 'cd frontend && npm run format:check'
+        language: system
+        files: ^frontend/src/
+        pass_filenames: false
+
+      - id: backend-tests
+        name: backend pytest
+        entry: bash -c 'cd backend && pytest'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: frontend-tests
+        name: frontend vitest
+        entry: bash -c 'cd frontend && npm test'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: frontend-typecheck
+        name: frontend typecheck (tsc --noEmit)
+        # Note: frontend/dist/ is committed to the repo, so `npm run build`
+        # (which also runs vite build) would rewrite tracked, hashed asset
+        # filenames on every push. Type-check only to avoid that.
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+        stages: [pre-push]

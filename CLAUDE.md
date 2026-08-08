@@ -46,6 +46,19 @@ docker compose exec backend flask --app wsgi seed   # optional sample data
 ```
 Frontend at `http://localhost:8080`, backend health check at `http://localhost:5000/api/health`.
 
+## Git hooks
+
+One-time setup after cloning (requires the backend venv active and `npm install` run in `frontend/`):
+
+```bash
+pip install -r backend/requirements-dev.txt   # provides pre-commit
+pre-commit install                            # installs pre-commit + pre-push hooks
+```
+
+- `pre-commit` stage: `black --check`, `flake8` (backend), `eslint`, `prettier --check` (frontend) — scoped to staged files, skipped when not relevant.
+- `pre-push` stage: `pytest` (backend), `npm test`, `tsc --noEmit` (frontend) — full suites, always run on push. (Not `npm run build`: `frontend/dist/` is committed, and a full build would rewrite its hashed filenames on every push.)
+- Bypass in an emergency with `git commit --no-verify` / `git push --no-verify`; fix and re-run normally afterward.
+
 ## Architecture
 
 **Backend** (`backend/app/`) is a small layered Flask app:
