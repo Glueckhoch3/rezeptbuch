@@ -1,11 +1,15 @@
 openapi: 3.0.3
 info:
   title: rezeptbuch API
-  version: "0.1.0"
+  version: "0.2.0"
   description: >
-    REST API for managing recipes. A recipe has a title, a description, a list
-    of ingredients (amount, unit, name) and an ordered list of work
-    instructions. All validation is performed by the backend.
+    REST API for managing recipes, their shared ingredient/tag/allergen
+    master data, and cross-domain recipe search. A recipe has a title, a
+    description, an origin, an ordered list of worksteps, an ordered list of
+    ingredient lines (each pointing at a shared, reusable ingredient), and a
+    set of tags. All validation is performed by the backend. Write endpoints
+    (POST/PATCH/PUT/DELETE) are rate limited; GET endpoints and /health are
+    exempt.
 servers:
   - url: http://localhost:5000/api
     description: Local backend (direct)
@@ -30,16 +34,17 @@ paths:
 
   /recipes:
     get:
-      summary: List all recipes (newest first)
+      summary: List recipes (newest first)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
-          description: Array of recipes
+          description: Paginated recipes
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Recipe"
+                $ref: "#/components/schemas/RecipePage"
     post:
       summary: Create a recipe
       requestBody:
@@ -59,6 +64,42 @@ paths:
           $ref: "#/components/responses/Error"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /recipes/search:
+    get:
+      summary: Filter recipes by tag, ingredient, allergen, and/or free text
+      description: >
+        All supplied query parameters combine with AND semantics (e.g.
+        `?tag=breakfast&ingredient=flour` returns recipes matching both).
+      parameters:
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: ingredient
+          in: query
+          schema:
+            type: string
+        - name: allergen
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Free-text match against title/description.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated matching recipes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipePage"
 
   /recipes/{id}:
     parameters:
@@ -66,7 +107,8 @@ paths:
         in: path
         required: true
         schema:
-          type: integer
+          type: string
+          format: uuid
     get:
       summary: Get a recipe by id
       responses:
@@ -78,14 +120,19 @@ paths:
                 $ref: "#/components/schemas/Recipe"
         "404":
           $ref: "#/components/responses/Error"
-    put:
-      summary: Replace a recipe
+    patch:
+      summary: Partially update a recipe
+      description: >
+        Only top-level fields present in the request body are updated.
+        For `ingredients`/`worksteps`/`tags`, "present" is collection-level:
+        supplying the field still replaces the whole collection wholesale,
+        but omitting it leaves the existing collection untouched.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RecipeInput"
+              $ref: "#/components/schemas/RecipePatch"
       responses:
         "200":
           description: Updated recipe
@@ -97,6 +144,8 @@ paths:
           $ref: "#/components/responses/Error"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     delete:
       summary: Delete a recipe
       responses:
@@ -104,86 +153,491 @@ paths:
           description: Deleted (no content)
         "404":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /ingredients:
+    get:
+      summary: List ingredients (alphabetical), optionally prefix-filtered
+      parameters:
+        - name: q
+          in: query
+          description: Case-insensitive name-prefix filter, for autocomplete.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated ingredients
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngredientPage"
+    post:
+      summary: Create an ingredient master row
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngredientInput"
+      responses:
+        "201":
+          description: Ingredient created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /ingredients/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get an ingredient by id
+      responses:
+        "200":
+          description: The ingredient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "404":
+          $ref: "#/components/responses/Error"
+    put:
+      summary: Replace an ingredient's name/description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngredientInput"
+      responses:
+        "200":
+          description: Updated ingredient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      summary: Delete an ingredient
+      description: Fails with 409 if the ingredient is used by any recipe.
+      responses:
+        "204":
+          description: Deleted (no content)
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /tags:
+    get:
+      summary: List tags (alphabetical), optionally prefix-filtered
+      parameters:
+        - name: q
+          in: query
+          description: Case-insensitive name-prefix filter, for autocomplete.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated tags
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TagPage"
+    post:
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /tags/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      summary: Delete a tag
+      description: Renaming a tag is delete+recreate; there is no PUT/PATCH.
+      responses:
+        "204":
+          description: Deleted (no content)
+        "404":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /allergens:
+    get:
+      summary: List allergens (alphabetical)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated allergens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllergenPage"
+    post:
+      summary: Create an allergen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllergenInput"
+      responses:
+        "201":
+          description: Allergen created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Allergen"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /allergens/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      summary: Delete an allergen
+      responses:
+        "204":
+          description: Deleted (no content)
+        "404":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
 components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
   schemas:
-    IngredientInput:
+    Workstep:
       type: object
-      required: [name]
+      required: [title, description]
       properties:
+        step_number:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          example: "Mix"
+        description:
+          type: string
+          example: "Combine dry ingredients."
+
+    RecipeIngredientInput:
+      type: object
+      description: >
+        Either `ingredient_id` (reuse an existing master ingredient) or
+        `name` (resolve-or-create by name) must be supplied.
+      properties:
+        ingredient_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Baking powder"
         amount:
           type: string
           example: "200"
         unit:
           type: string
           example: "g"
+
+    RecipeIngredient:
+      type: object
+      properties:
+        ingredient_id:
+          type: string
+          format: uuid
         name:
           type: string
-          example: "Flour"
-    InstructionInput:
-      type: object
-      required: [text]
-      properties:
-        text:
+        amount:
           type: string
-          example: "Mix all dry ingredients."
+        unit:
+          type: string
+        position:
+          type: integer
+
+    RecipeTag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
     RecipeInput:
       type: object
-      required: [title, ingredients, instructions]
+      required: [title, ingredients, worksteps]
       properties:
         title:
           type: string
           example: "Pancakes"
         description:
           type: string
-          example: "Fluffy breakfast pancakes."
+          example: "Fluffy breakfast pancakes"
+        origin:
+          type: string
+          nullable: true
+          example: "US"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["breakfast", "quick"]
         ingredients:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/IngredientInput"
-        instructions:
+            $ref: "#/components/schemas/RecipeIngredientInput"
+        worksteps:
           type: array
           minItems: 1
           items:
-            $ref: "#/components/schemas/InstructionInput"
-    Ingredient:
-      allOf:
-        - $ref: "#/components/schemas/IngredientInput"
-        - type: object
-          properties:
-            position:
-              type: integer
-    Instruction:
-      allOf:
-        - $ref: "#/components/schemas/InstructionInput"
-        - type: object
-          properties:
-            step_number:
-              type: integer
-    Recipe:
+            $ref: "#/components/schemas/Workstep"
+
+    RecipePatch:
       type: object
+      description: Same shape as RecipeInput, but every field is optional.
       properties:
-        id:
-          type: integer
         title:
           type: string
         description:
           type: string
+        origin:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/RecipeIngredientInput"
+        worksteps:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Workstep"
+
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        origin:
+          type: string
+          nullable: true
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
+        worksteps:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workstep"
         ingredients:
           type: array
           items:
-            $ref: "#/components/schemas/Ingredient"
-        instructions:
+            $ref: "#/components/schemas/RecipeIngredient"
+        tags:
           type: array
           items:
-            $ref: "#/components/schemas/Instruction"
+            $ref: "#/components/schemas/RecipeTag"
+
+    RecipePage:
+      allOf:
+        - $ref: "#/components/schemas/PageEnvelope"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Recipe"
+
+    IngredientInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "Flour"
+        description:
+          type: string
+          nullable: true
+          example: "All-purpose wheat flour"
+
+    Ingredient:
+      allOf:
+        - $ref: "#/components/schemas/IngredientInput"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    IngredientPage:
+      allOf:
+        - $ref: "#/components/schemas/PageEnvelope"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Ingredient"
+
+    TagInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "breakfast"
+
+    Tag:
+      allOf:
+        - $ref: "#/components/schemas/TagInput"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+
+    TagPage:
+      allOf:
+        - $ref: "#/components/schemas/PageEnvelope"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Tag"
+
+    AllergenInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: "gluten"
+
+    Allergen:
+      allOf:
+        - $ref: "#/components/schemas/AllergenInput"
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+
+    AllergenPage:
+      allOf:
+        - $ref: "#/components/schemas/PageEnvelope"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Allergen"
+
+    PageEnvelope:
+      type: object
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
     ErrorResponse:
       type: object
       properties:
@@ -210,3 +664,12 @@ components:
             error: "Validation failed."
             details:
               title: ["Title is required."]
+    RateLimited:
+      description: Write rate limit exceeded (60 requests/minute per IP)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "Rate limit exceeded."
+            details: {}

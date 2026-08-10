@@ -10,7 +10,7 @@ Status: proposal — superseded [`0002-data-model-and-api-shape.md`](../../.gith
 
 | Question | Decision | Rationale |
 |---|---|---|
-| `ingredient_list` join table: plain link or own entity? | Rename to `recipe_ingredient`, give it its own PK plus `amount`/`unit` | A shared ingredient still needs a per-recipe quantity and unit ("200g flour in *this* recipe") — a bare link table can't carry that |
+| `ingredient_list` join table: plain link or own entity? | Rename to `recipe_ingredient`, keep composite PK `(recipe_id, ingredient_id)`, add `amount`/`unit`/`position` columns | A shared ingredient still needs a per-recipe quantity and unit ("200g flour in *this* recipe") — a bare link table can't carry that. No surrogate `id`: nothing references a `recipe_ingredient` row from elsewhere, and the composite key structurally prevents listing the same ingredient twice in one recipe |
 | Tags: shared table or a string per recipe row? | Shared `tag` master + `recipe_tag` join | Enables autocomplete and "browse by tag" without free-text typos fragmenting the tag space ("Vegan" vs "vegan") |
 | Allergens: shared table or free text per ingredient? | Shared `allergen` master + `ingredient_allergen` join | Same reasoning as tags — allergens are a small, roughly fixed vocabulary that benefits from consistency for filtering |
 | Primary key strategy | UUID everywhere, generated **application-side** (`uuid.uuid4()` as the SQLAlchemy column default) | Matches the JSON model's intent (non-guessable IDs) without requiring a Postgres extension (`pgcrypto`/`uuid-ossp`) — keeps the existing SQLite in-memory test setup working unmodified |
@@ -21,6 +21,8 @@ Status: proposal — superseded [`0002-data-model-and-api-shape.md`](../../.gith
 | List endpoint pagination | Included from the first migration | Avoids a later endpoint-shape change and index rework; cheap to add while the schema is still being designed |
 | Where does the unit live? | Only on `recipe_ingredient.unit`, not on `ingredient` | A recipe line always states its own unit — a shared "default unit with per-recipe override" adds a fallback layer nothing actually needs |
 | Ingredient categorization | `ingredient.description` (free text), replacing `ingredient.type` | An open description is more useful than a loose category string that nothing filters or groups by |
+| `workstep`/`recipe_ingredient` PK: surrogate `id` or composite natural key? | Composite `(recipe_id, step_number)` / `(recipe_id, ingredient_id)` — no surrogate `id` | Both rows are only ever addressed through their parent recipe, and nothing references them from elsewhere; a composite key also structurally rules out duplicate step numbers / duplicate ingredients on a recipe instead of needing a separate `UNIQUE` constraint |
+| `recipe.description` size | `VARCHAR(2000)`, not `TEXT` | It's a short recipe summary, not full body text — an explicit bound is more honest than unbounded `TEXT` |
 
 ## Finalized tables
 
@@ -29,7 +31,7 @@ Status: proposal — superseded [`0002-data-model-and-api-shape.md`](../../.gith
 |---|---|---|
 | `id` | UUID, PK | app-generated |
 | `title` | VARCHAR(255) NOT NULL | |
-| `description` | TEXT NOT NULL DEFAULT '' | fixes the `decription` typo in the JSON model |
+| `description` | VARCHAR(2000) NOT NULL DEFAULT '' | fixes the `decription` typo in the JSON model; short recipe summary, not full body text |
 | `origin` | VARCHAR(255) NULL | |
 | `search_vector` | TSVECTOR NOT NULL | generated column (`GENERATED ALWAYS AS (...) STORED`) combining `title` (weight A) and `description` (weight B); GIN index `ix_recipe_search_vector` |
 | `created_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | |
@@ -40,13 +42,12 @@ Index: GIN on `search_vector`, plus `(created_at, id)` to support stable keyset 
 ### `workstep` (replaces `instructions`)
 | Column | Type | Notes |
 |---|---|---|
-| `id` | UUID, PK | |
-| `recipe_id` | UUID NOT NULL, FK → `recipe.id` | `ON DELETE CASCADE` |
-| `step_number` | INT NOT NULL | renamed from the JSON's ambiguous `workstep` column name |
+| `recipe_id` | UUID NOT NULL, FK → `recipe.id`, PK (composite) | `ON DELETE CASCADE` |
+| `step_number` | INT NOT NULL, PK (composite) | renamed from the JSON's ambiguous `workstep` column name |
 | `title` | VARCHAR(120) NOT NULL | bumped from the JSON's VARCHAR(31), too short for a real step title |
 | `description` | TEXT NOT NULL | |
 
-Constraints: `UNIQUE (recipe_id, step_number)`. Index: `(recipe_id, step_number)`.
+Primary key: composite `(recipe_id, step_number)` — no surrogate `id`; a step is only ever addressed by its recipe and position, and nothing references a step from elsewhere.
 
 ### `ingredient` (shared master)
 | Column | Type | Notes |
@@ -61,14 +62,13 @@ Constraint: `UNIQUE (lower(name))` — prevents duplicate master rows differing 
 ### `recipe_ingredient` (replaces `ingredient_list`)
 | Column | Type | Notes |
 |---|---|---|
-| `id` | UUID, PK | |
-| `recipe_id` | UUID NOT NULL, FK → `recipe.id` | `ON DELETE CASCADE` |
-| `ingredient_id` | UUID NOT NULL, FK → `ingredient.id` | `ON DELETE RESTRICT` — see cascade rules below |
+| `recipe_id` | UUID NOT NULL, FK → `recipe.id`, PK (composite) | `ON DELETE CASCADE` |
+| `ingredient_id` | UUID NOT NULL, FK → `ingredient.id`, PK (composite) | `ON DELETE RESTRICT` — see cascade rules below |
 | `amount` | VARCHAR(50) NOT NULL DEFAULT '' | string, not numeric — allows "1/2", "a pinch" (matches the current app's existing choice) |
 | `unit` | VARCHAR(31) NOT NULL DEFAULT '' | renamed from `unit_override`; now the sole source of unit for this ingredient line, since `ingredient` no longer carries a default unit |
 | `position` | INT NOT NULL DEFAULT 0 | display order, mirrors the current app's `Ingredient.position` |
 
-Constraint: `UNIQUE (recipe_id, ingredient_id)` — the same ingredient listed twice in one recipe is a data error. Indexes: `(recipe_id)`, `(ingredient_id)` (for "recipes using ingredient X").
+Primary key: composite `(recipe_id, ingredient_id)` — no surrogate `id`; this also makes "the same ingredient listed twice in one recipe" structurally impossible instead of relying on a separate unique constraint. Index: `(ingredient_id)` (for "recipes using ingredient X"); `(recipe_id, ...)` lookups are served by the PK index itself.
 
 ### `tag` (shared master) + `recipe_tag` (join)
 - `tag`: `id` UUID PK, `name` VARCHAR(63) NOT NULL, `UNIQUE (lower(name))`, index on `name` (`text_pattern_ops`) for prefix-match autocomplete.
@@ -89,7 +89,7 @@ The raw JSON model leaves every relationship at "No action". This plan fixes tha
 ## Rationale vs. the raw JSON model
 
 - Fixed `decription` → `description` typo on `recipe`.
-- `ingredient_list` → `recipe_ingredient`: needed its own identity plus `amount`/`unit`, otherwise "200g flour in recipe X" is unexpressible once ingredients are shared.
+- `ingredient_list` → `recipe_ingredient`: gained `amount`/`unit`/`position` columns, otherwise "200g flour in recipe X" is unexpressible once ingredients are shared. Kept the composite `(recipe_id, ingredient_id)` primary key rather than adding a surrogate `id` — nothing references a `recipe_ingredient` row from elsewhere, and the composite key doubles as the "no duplicate ingredient in one recipe" constraint. Same reasoning applies to `workstep`, keyed by `(recipe_id, step_number)`.
 - `tags` and `allergene` promoted from per-row strings to master + join tables: enables autocomplete, prevents typo-fragmented tag/allergen spaces, and is a prerequisite for the search/filter feature planned in step 2.
 - Added `created_at`/`updated_at` on `recipe` and `ingredient` (independent lifecycle); omitted on pure join tables to keep them lean.
 - All FKs given explicit cascade behavior instead of "No action".
@@ -107,6 +107,8 @@ No production data exists yet worth preserving (study project, no running instan
 ## Preview: mapping to SQLAlchemy (detail lives in step 2)
 
 UUID primary keys should use a small type-decorator so the same model code works against both Postgres (`sqlalchemy.dialects.postgresql.UUID(as_uuid=True)`) and the SQLite in-memory database used by `backend/tests/conftest.py` (`String(36)` fallback). This is called out explicitly because it's the one technical risk in the "UUIDs everywhere" decision — it must be resolved in step 2 before the existing test setup is touched.
+
+`workstep` and `recipe_ingredient` map to SQLAlchemy models with two columns marked `primary_key=True` (composite PK) instead of a single `id` — ordinary declarative mapping supports this directly, no extra machinery needed. The practical effect on `services.py`: code that currently does `Model.query.get(id)` on these rows instead does a two-column filter (`filter_by(recipe_id=..., step_number=...)` / `filter_by(recipe_id=..., ingredient_id=...)`), and any route accepting a single `:id` path segment for a workstep or recipe-ingredient would need two path segments instead — relevant to `doc/api-doc.yaml` and step 2/3 if either resource is ever addressed directly rather than only nested under its recipe.
 
 ## Critical files
 
