@@ -41,3 +41,14 @@ def delete_allergen(allergen_id: uuid.UUID) -> None:
     allergen = get_allergen(allergen_id)
     repository.delete(allergen)
     repository.commit()
+
+
+def resolve_or_create_by_name(name: str) -> Allergen:
+    """Find a master allergen row by (case-insensitive) name, or create one."""
+    existing = repository.get_by_name(name)
+    if existing is not None:
+        return existing
+    allergen = Allergen(name=name.strip())
+    repository.add(allergen)
+    repository.commit()
+    return allergen

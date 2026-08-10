@@ -6,6 +6,8 @@ import uuid
 
 from sqlalchemy.exc import IntegrityError
 
+from ..allergen import service as allergen_service
+from ..allergen.models import IngredientAllergen
 from ..core.errors import ApiError
 from . import repository
 from .models import Ingredient
@@ -63,6 +65,21 @@ def delete_ingredient(ingredient_id: uuid.UUID) -> None:
         )
     repository.delete(ingredient)
     repository.commit()
+
+
+def set_ingredient_allergens(ingredient_id: uuid.UUID, names: list[str]) -> Ingredient:
+    """Replace an ingredient's allergen links wholesale, by allergen name."""
+    ingredient = get_ingredient(ingredient_id)
+    ingredient.ingredient_allergens.clear()
+    seen_allergen_ids: set[uuid.UUID] = set()
+    for name in names:
+        allergen = allergen_service.resolve_or_create_by_name(name)
+        if allergen.id in seen_allergen_ids:
+            continue
+        seen_allergen_ids.add(allergen.id)
+        ingredient.ingredient_allergens.append(IngredientAllergen(allergen=allergen))
+    repository.commit()
+    return ingredient
 
 
 def resolve_or_create_by_name(name: str) -> Ingredient:

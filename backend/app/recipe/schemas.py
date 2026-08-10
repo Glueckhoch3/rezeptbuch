@@ -11,6 +11,7 @@ from marshmallow import (
     validates_schema,
 )
 
+from ..allergen.schemas import AllergenRefSchema
 from ..workstep.schemas import WorkstepInputSchema, WorkstepOutputSchema
 
 
@@ -43,6 +44,9 @@ class RecipeIngredientOutputSchema(Schema):
     amount = fields.String()
     unit = fields.String()
     position = fields.Integer()
+    allergens = fields.List(
+        fields.Nested(AllergenRefSchema), attribute="ingredient.ingredient_allergens"
+    )
 
 
 class RecipeTagOutputSchema(Schema):

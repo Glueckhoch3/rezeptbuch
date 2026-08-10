@@ -11,6 +11,7 @@ from ..core.extensions import limiter
 from ..core.pagination import parse_pagination_params
 from . import service
 from .schemas import (
+    ingredient_allergens_input_schema,
     ingredient_input_schema,
     ingredient_list_output_schema,
     ingredient_output_schema,
@@ -60,3 +61,13 @@ def update_ingredient(ingredient_id: uuid.UUID):
 def delete_ingredient(ingredient_id: uuid.UUID):
     service.delete_ingredient(ingredient_id)
     return "", 204
+
+
+@ingredient_bp.put("/<uuid:ingredient_id>/allergens")
+@limiter.limit("60/minute")
+def set_ingredient_allergens(ingredient_id: uuid.UUID):
+    if not request.is_json:
+        raise ApiError("Request body must be JSON.", status_code=415)
+    data = ingredient_allergens_input_schema.load(request.get_json())
+    ingredient = service.set_ingredient_allergens(ingredient_id, data["allergens"])
+    return jsonify(ingredient_output_schema.dump(ingredient)), 200

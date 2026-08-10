@@ -22,6 +22,13 @@ class AllergenOutputSchema(Schema):
     name = fields.String()
 
 
+class AllergenRefSchema(Schema):
+    """Allergen reference nested under an ``IngredientAllergen`` link row."""
+
+    id = fields.UUID(attribute="allergen.id")
+    name = fields.String(attribute="allergen.name")
+
+
 allergen_input_schema = AllergenInputSchema()
 allergen_output_schema = AllergenOutputSchema()
 allergen_list_output_schema = AllergenOutputSchema(many=True)

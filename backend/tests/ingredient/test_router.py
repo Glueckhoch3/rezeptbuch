@@ -55,3 +55,46 @@ def test_list_supports_q_prefix_search(client):
 def test_get_missing_ingredient_returns_404(client):
     resp = client.get("/api/ingredients/00000000-0000-0000-0000-000000000000")
     assert resp.status_code == 404
+
+
+def test_set_and_replace_ingredient_allergens(client):
+    created = client.post("/api/ingredients", json={"name": "Flour"}).get_json()
+
+    resp = client.put(
+        f"/api/ingredients/{created['id']}/allergens",
+        json={"allergens": ["gluten", "Gluten", "wheat"]},
+    )
+    assert resp.status_code == 200
+    names = sorted(a["name"] for a in resp.get_json()["allergens"])
+    assert names == ["gluten", "wheat"]
+
+    replaced = client.put(
+        f"/api/ingredients/{created['id']}/allergens",
+        json={"allergens": ["soy"]},
+    )
+    assert [a["name"] for a in replaced.get_json()["allergens"]] == ["soy"]
+
+
+def test_recipe_ingredient_output_includes_allergens(client, sample_payload):
+    ingredient = client.post("/api/ingredients", json={"name": "Vegetable stock"})
+    ingredient_id = ingredient.get_json()["id"]
+    client.put(
+        f"/api/ingredients/{ingredient_id}/allergens", json={"allergens": ["celery"]}
+    )
+
+    payload = dict(sample_payload)
+    payload["ingredients"] = [
+        {"ingredient_id": ingredient_id, "amount": "1", "unit": "l"},
+        {"amount": "2", "unit": "", "name": "Carrots"},
+    ]
+    recipe = client.post("/api/recipes", json=payload).get_json()
+
+    stock_line = next(
+        i for i in recipe["ingredients"] if i["ingredient_id"] == ingredient_id
+    )
+    assert [a["name"] for a in stock_line["allergens"]] == ["celery"]
+
+    carrot_line = next(
+        i for i in recipe["ingredients"] if i["ingredient_id"] != ingredient_id
+    )
+    assert carrot_line["allergens"] == []
