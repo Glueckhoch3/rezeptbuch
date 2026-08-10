@@ -1,23 +1,50 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, createRecipe, fetchRecipes } from './client';
+import { ApiError, request, toQueryString } from './client';
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('api client', () => {
-  it('fetches and returns the recipe list', async () => {
-    const recipes = [{ id: 1, title: 'A' }];
+describe('toQueryString', () => {
+  it('builds a query string, dropping undefined and empty values', () => {
+    expect(
+      toQueryString({ q: 'flour', page: 2, unit: '', missing: undefined }),
+    ).toBe('?q=flour&page=2');
+  });
+
+  it('returns an empty string when nothing is set', () => {
+    expect(toQueryString({})).toBe('');
+  });
+});
+
+describe('request', () => {
+  it('resolves with the parsed JSON body on success', async () => {
+    const body = { id: '1', title: 'A' };
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        json: () => Promise.resolve(recipes),
+        json: () => Promise.resolve(body),
       }),
     );
 
-    await expect(fetchRecipes()).resolves.toEqual(recipes);
+    await expect(request('/recipes/1')).resolves.toEqual(body);
+  });
+
+  it('resolves with undefined on a 204 No Content response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+        json: () => Promise.resolve({}),
+      }),
+    );
+
+    await expect(
+      request('/recipes/1', { method: 'DELETE' }),
+    ).resolves.toBeUndefined();
   });
 
   it('throws an ApiError carrying backend validation details', async () => {
@@ -35,12 +62,7 @@ describe('api client', () => {
     );
 
     await expect(
-      createRecipe({
-        title: '',
-        description: '',
-        ingredients: [],
-        instructions: [],
-      }),
+      request('/recipes', { method: 'POST', body: JSON.stringify({}) }),
     ).rejects.toMatchObject({
       name: 'ApiError',
       status: 422,
@@ -55,6 +77,6 @@ describe('api client', () => {
       vi.fn().mockRejectedValue(new Error('network down')),
     );
 
-    await expect(fetchRecipes()).rejects.toBeInstanceOf(ApiError);
+    await expect(request('/recipes')).rejects.toBeInstanceOf(ApiError);
   });
 });
