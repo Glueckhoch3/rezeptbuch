@@ -1,49 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError, fetchRecipes } from '../api/client';
+import type { ApiError } from '../api/client';
 import { ErrorBanner } from '../components/ErrorBanner';
-import type { Recipe } from '../types';
+import { Pager } from '../components/Pager';
+import { RecipeCard } from '../features/recipes/components/RecipeCard';
+import { useRecipes } from '../features/recipes/hooks';
 
 export function RecipeListPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiError | null>(null);
+  const [page, setPage] = useState(1);
+  const { data, isPending, isError, error } = useRecipes({ page });
 
-  useEffect(() => {
-    fetchRecipes()
-      .then(setRecipes)
-      .catch((e) => setError(e as ApiError))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <p className="muted">Loading recipes…</p>;
+  if (isPending) return <p className="muted">Loading recipes…</p>;
+  if (isError) return <ErrorBanner error={error as ApiError} />;
 
   return (
     <section>
       <h1>Recipes</h1>
-      <ErrorBanner error={error} />
-      {!error && recipes.length === 0 && (
-        <p className="muted">
+      {data.items.length === 0 ? (
+        <p className="empty-state">
           No recipes yet.{' '}
           <Link to="/recipes/new">Create your first recipe.</Link>
         </p>
+      ) : (
+        <>
+          <ul className="recipe-list">
+            {data.items.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </ul>
+          <Pager
+            page={data.page}
+            pageSize={data.page_size}
+            total={data.total}
+            onPageChange={setPage}
+          />
+        </>
       )}
-      <ul className="recipe-list">
-        {recipes.map((recipe) => (
-          <li key={recipe.id} className="recipe-card">
-            <Link to={`/recipes/${recipe.id}`} className="recipe-card-title">
-              {recipe.title}
-            </Link>
-            {recipe.description && (
-              <p className="muted">{recipe.description}</p>
-            )}
-            <span className="recipe-card-meta">
-              {recipe.ingredients.length} ingredients ·{' '}
-              {recipe.instructions.length} steps
-            </span>
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }
