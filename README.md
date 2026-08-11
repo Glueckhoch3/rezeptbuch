@@ -30,7 +30,7 @@ cp .env.example .env
 docker compose up --build -d
 
 # 3. (Optional) load example recipes
-docker compose exec backend flask --app wsgi seed
+docker compose exec backend-service flask --app wsgi seed
 ```
 
 Then open:
