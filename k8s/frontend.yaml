@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: glueckhoch3/glueckhoch3:rezeptbuch-frnt-v2
+          image: glueckhoch3/glueckhoch3:rezeptbuch-frnt-v3
           env:
             - name: BACKEND_HOST
               valueFrom:
