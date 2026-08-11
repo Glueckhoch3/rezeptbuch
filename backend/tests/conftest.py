@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from app import create_app
-from app.config import TestConfig
-from app.extensions import db
+from app.core.config import TestConfig
+from app.core.extensions import db
 
 
 @pytest.fixture()
@@ -29,12 +29,14 @@ def sample_payload() -> dict:
     return {
         "title": "Test Soup",
         "description": "A warming soup.",
+        "origin": "Testland",
+        "tags": ["soup", "warming"],
         "ingredients": [
             {"amount": "1", "unit": "l", "name": "Vegetable stock"},
             {"amount": "2", "unit": "", "name": "Carrots"},
         ],
-        "instructions": [
-            {"text": "Chop the carrots."},
-            {"text": "Simmer in the stock for 20 minutes."},
+        "worksteps": [
+            {"title": "Chop", "description": "Chop the carrots."},
+            {"title": "Simmer", "description": "Simmer in the stock for 20 minutes."},
         ],
     }

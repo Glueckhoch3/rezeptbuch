@@ -1,7 +1,6 @@
-// Dedicated API client layer. Components never call fetch directly; they go
-// through these functions so the backend contract lives in one place.
-
-import type { Recipe, RecipeInput } from '../types';
+// Dedicated API client layer. Feature modules (features/*/api.ts) never call
+// fetch directly; they go through this wrapper so the backend contract lives
+// in one place.
 
 // In development Vite proxies "/api" to the backend. In other environments the
 // base URL can be overridden via VITE_API_BASE_URL.
@@ -24,7 +23,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+// Envelope shared by every paginated list endpoint:
+// {"items": [...], "page": n, "page_size": n, "total": n}
+export interface Page<T> {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+// Builds a "?key=value&..." query string, dropping undefined/empty values so
+// callers can pass optional filter objects directly.
+export function toQueryString(
+  params: Record<string, string | number | undefined>,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') {
+      search.set(key, String(value));
+    }
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   let response: Response;
   try {
     const headers = new Headers(options.headers);
@@ -59,30 +85,4 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return body as T;
-}
-
-export function fetchRecipes(): Promise<Recipe[]> {
-  return request<Recipe[]>('/recipes');
-}
-
-export function fetchRecipe(id: number): Promise<Recipe> {
-  return request<Recipe>(`/recipes/${id}`);
-}
-
-export function createRecipe(input: RecipeInput): Promise<Recipe> {
-  return request<Recipe>('/recipes', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateRecipe(id: number, input: RecipeInput): Promise<Recipe> {
-  return request<Recipe>(`/recipes/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(input),
-  });
-}
-
-export function deleteRecipe(id: number): Promise<void> {
-  return request<void>(`/recipes/${id}`, { method: 'DELETE' });
 }

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: glueckhoch3/glueckhoch3:rezeptbuch-back-v1
+          image: glueckhoch3/glueckhoch3:rezeptbuch-back-v2
           env:
             - name: POSTGRES_USER
               valueFrom:

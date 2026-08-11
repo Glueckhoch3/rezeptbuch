@@ -30,7 +30,7 @@ cp .env.example .env
 docker compose up --build -d
 
 # 3. (Optional) load example recipes
-docker compose exec backend flask --app wsgi seed
+docker compose exec backend-service flask --app wsgi seed
 ```
 
 Then open:
@@ -73,6 +73,16 @@ npm run dev                      # serves http://localhost:5173
 The Vite dev server proxies `/api` to `http://localhost:5000` (override with
 `VITE_API_PROXY_TARGET`), so the frontend and backend share one origin in the
 browser.
+
+### Git hooks
+
+After the backend and frontend setup above, install the local git hooks once:
+
+```bash
+pre-commit install   # from backend/requirements-dev.txt; installs pre-commit + pre-push hooks
+```
+
+See [`CLAUDE.md`](CLAUDE.md#git-hooks) for what runs at each stage.
 
 ## Project layout
 

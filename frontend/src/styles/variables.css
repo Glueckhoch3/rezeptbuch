@@ -1,0 +1,27 @@
+/* Design tokens: colors, spacing, type scale, breakpoints. Values unchanged
+   from the original global.css `:root` block — only extracted so they have
+   one home and can be extended per-feature without touching global.css. */
+:root {
+  --color-bg: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-text: #2b2b2b;
+  --color-muted: #6b6b6b;
+  --color-primary: #c0562a;
+  --color-primary-dark: #9d4421;
+  --color-danger: #b3261e;
+  --color-border: #e0ddd6;
+  --radius: 8px;
+
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+
+  --font-size-sm: 0.85rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.15rem;
+  --font-size-lg: 1.4rem;
+
+  --bp-md: 768px;
+}

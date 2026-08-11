@@ -1,46 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ApiError, deleteRecipe, fetchRecipe } from '../api/client';
+import type { ApiError } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorBanner } from '../components/ErrorBanner';
-import type { Recipe } from '../types';
+import { AllergenBadge } from '../features/allergens/components/AllergenBadge';
+import type { Allergen } from '../features/allergens/types';
+import { useDeleteRecipe, useRecipe } from '../features/recipes/hooks';
 
 export function RecipeDetailPage() {
-  const { id } = useParams();
-  const recipeId = Number(id);
+  const { id = '' } = useParams();
   const navigate = useNavigate();
-
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiError | null>(null);
+  const { data: recipe, isPending, isError, error } = useRecipe(id);
+  const deleteRecipe = useDeleteRecipe();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    if (!Number.isFinite(recipeId)) {
-      setError(new ApiError('Invalid recipe id.', 400));
-      setLoading(false);
-      return;
-    }
-
-    fetchRecipe(recipeId)
-      .then(setRecipe)
-      .catch((e) => setError(e as ApiError))
-      .finally(() => setLoading(false));
-  }, [recipeId]);
+  if (isPending) return <p className="muted">Loading recipe…</p>;
+  if (isError) return <ErrorBanner error={error as ApiError} />;
 
   const handleDelete = async () => {
     try {
-      await deleteRecipe(recipeId);
+      await deleteRecipe.mutateAsync(id);
       navigate('/');
-    } catch (e) {
-      setError(e as ApiError);
+    } catch {
       setConfirmOpen(false);
     }
   };
 
-  if (loading) return <p className="muted">Loading recipe…</p>;
-  if (error) return <ErrorBanner error={error} />;
-  if (!recipe) return <p className="muted">Recipe not found.</p>;
+  // Allergens are derived from the recipe's ingredients rather than stored
+  // on the recipe directly, so dedupe across ingredient lines.
+  const allergens = Array.from(
+    new Map<string, Allergen>(
+      recipe.ingredients.flatMap((i) => i.allergens).map((a) => [a.id, a]),
+    ).values(),
+  );
 
   return (
     <article>
@@ -51,6 +43,7 @@ export function RecipeDetailPage() {
             Edit
           </Link>
           <button
+            type="button"
             className="button button-danger"
             onClick={() => setConfirmOpen(true)}
           >
@@ -58,21 +51,58 @@ export function RecipeDetailPage() {
           </button>
         </div>
       </div>
+
+      {deleteRecipe.isError && (
+        <ErrorBanner error={deleteRecipe.error as ApiError} />
+      )}
+
+      {recipe.origin && <p className="muted">Origin: {recipe.origin}</p>}
       {recipe.description && <p>{recipe.description}</p>}
+
+      {recipe.tags.length > 0 && (
+        <ul className="badge-list">
+          {recipe.tags.map((tag) => (
+            <li key={tag.id}>
+              <Link
+                to={`/search?tag=${encodeURIComponent(tag.name)}`}
+                className="badge"
+              >
+                {tag.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {allergens.length > 0 && (
+        <>
+          <h2>Allergens</h2>
+          <ul className="badge-list">
+            {allergens.map((allergen) => (
+              <li key={allergen.id}>
+                <AllergenBadge allergen={allergen} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2>Ingredients</h2>
       <ul className="ingredient-list">
-        {recipe.ingredients.map((ing, i) => (
-          <li key={i}>
+        {recipe.ingredients.map((ing) => (
+          <li key={`${ing.ingredient_id}-${ing.position}`}>
             {[ing.amount, ing.unit, ing.name].filter(Boolean).join(' ')}
           </li>
         ))}
       </ul>
 
-      <h2>Instructions</h2>
+      <h2>Worksteps</h2>
       <ol className="instruction-list">
-        {recipe.instructions.map((ins, i) => (
-          <li key={i}>{ins.text}</li>
+        {recipe.worksteps.map((step) => (
+          <li key={step.step_number}>
+            <strong>{step.title}</strong>
+            <p>{step.description}</p>
+          </li>
         ))}
       </ol>
 

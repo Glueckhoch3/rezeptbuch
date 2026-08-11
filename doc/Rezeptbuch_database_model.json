@@ -1,0 +1,667 @@
+{
+  "tables": [
+    {
+      "id": 0,
+      "name": "recipe",
+      "x": 167,
+      "y": 88,
+      "fields": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "app-generated",
+          "id": 0,
+          "size": "",
+          "values": []
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 1,
+          "size": 255
+        },
+        {
+          "name": "description",
+          "type": "VARCHAR",
+          "default": "''",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "fixes the 'decription' typo; short recipe summary, not full body text",
+          "id": 2,
+          "size": 2000
+        },
+        {
+          "name": "origin",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "",
+          "id": 3,
+          "size": 255
+        },
+        {
+          "name": "search_vector",
+          "type": "TSVECTOR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "generated column: title (weight A) + description (weight B); GIN index",
+          "id": 4,
+          "size": ""
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "default": "now()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 5,
+          "size": ""
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "default": "now()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 6,
+          "size": ""
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "ix_recipe_search_vector",
+          "fields": ["search_vector"],
+          "unique": false
+        },
+        {
+          "id": 1,
+          "name": "ix_recipe_created_at_id",
+          "fields": ["created_at", "id"],
+          "unique": false
+        }
+      ],
+      "color": "#6360f7",
+      "uniqueConstraints": []
+    },
+    {
+      "id": 3,
+      "name": "workstep",
+      "x": 665,
+      "y": -103,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 0,
+          "size": ""
+        },
+        {
+          "name": "step_number",
+          "type": "INT",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "renamed from ambiguous 'workstep' column; part of composite PK with recipe_id",
+          "id": 2
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "bumped from 31 to 120",
+          "id": 3,
+          "size": 120
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": 4,
+          "size": 65535,
+          "values": []
+        }
+      ],
+      "comment": "PK is (recipe_id, step_number); no surrogate id",
+      "indices": [],
+      "color": "#89e667",
+      "uniqueConstraints": []
+    },
+    {
+      "id": "wqrl9YgAZe3q61B5xZ0t9",
+      "name": "recipe_ingredient",
+      "x": 794.0051249999999,
+      "y": 175.31012500000003,
+      "locked": false,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "recipe_ingredient_recipe_id",
+          "size": ""
+        },
+        {
+          "id": "Lq3upa04KCLJhEk2-CLvT",
+          "name": "ingredient_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": "",
+          "values": []
+        },
+        {
+          "id": "y8jjlihULS13aB6GH5Ev8",
+          "name": "amount",
+          "type": "VARCHAR",
+          "default": "''",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "free text, not numeric — allows '1/2', 'a pinch'",
+          "size": 50
+        },
+        {
+          "id": "grTK8-MvJqFgDvKmKNstk",
+          "name": "unit",
+          "type": "VARCHAR",
+          "default": "''",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "renamed from unit_override; sole source of unit for this line",
+          "size": 31
+        },
+        {
+          "id": "recipe_ingredient_position",
+          "name": "position",
+          "type": "INT",
+          "default": "0",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "display order",
+          "size": ""
+        }
+      ],
+      "comment": "renamed from ingredient_list; PK is (recipe_id, ingredient_id); gained amount/unit so a shared ingredient can carry a per-recipe quantity",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": ["ingredient_id"],
+          "unique": false
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    },
+    {
+      "id": "emRw5ZaC1Zx36UnptfHlR",
+      "name": "ingredient",
+      "x": 1263.8966249999999,
+      "y": 381.11150000000004,
+      "locked": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "unsigned": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "orv4ZW1W49sPhBpe8AH7Y",
+          "size": "",
+          "values": []
+        },
+        {
+          "id": "NrdeyQ09v_AMBTKb-Fl0n",
+          "name": "name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "bumped from 63 to 120; UNIQUE(lower(name)) enforced at DB level",
+          "size": 120
+        },
+        {
+          "id": "ingredient_description",
+          "name": "description",
+          "type": "TEXT",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "comment": "replaces 'type' and 'unit' — free-text notes; unit always lives on recipe_ingredient instead",
+          "size": 65535
+        },
+        {
+          "id": "ingredient_created_at",
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "default": "now()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": ""
+        },
+        {
+          "id": "ingredient_updated_at",
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "default": "now()",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "size": ""
+        }
+      ],
+      "comment": "",
+      "indices": [
+        {
+          "id": 0,
+          "name": "ux_ingredient_lower_name",
+          "fields": ["name"],
+          "unique": true
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    },
+    {
+      "id": "tag_table_id",
+      "name": "tag",
+      "x": 167,
+      "y": 450,
+      "locked": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "tag_id_field",
+          "size": ""
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "UNIQUE(lower(name)); indexed with text_pattern_ops for prefix-match autocomplete",
+          "id": "tag_name_field",
+          "size": 63
+        }
+      ],
+      "comment": "shared master vocabulary, split out of the old per-recipe 'tags' rows so autocomplete and typo-free filtering are possible",
+      "indices": [
+        {
+          "id": 0,
+          "name": "ux_tag_lower_name",
+          "fields": ["name"],
+          "unique": true
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#ffe159",
+      "collapsed": false
+    },
+    {
+      "id": "recipe_tag_table_id",
+      "name": "recipe_tag",
+      "x": 420,
+      "y": 420,
+      "locked": false,
+      "fields": [
+        {
+          "name": "recipe_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "recipe_tag_recipe_id",
+          "size": ""
+        },
+        {
+          "name": "tag_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "recipe_tag_tag_id",
+          "size": ""
+        }
+      ],
+      "comment": "pure link table replacing the old 'tags' table; composite PK (recipe_id, tag_id), no surrogate id needed",
+      "indices": [
+        {
+          "id": 0,
+          "name": "",
+          "fields": ["tag_id"],
+          "unique": false
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#ffe159",
+      "collapsed": false
+    },
+    {
+      "id": "allergen_table_id",
+      "name": "allergen",
+      "x": 1643,
+      "y": 178,
+      "locked": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": true,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "allergen_id_field",
+          "size": ""
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "default": "",
+          "check": "",
+          "primary": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "renamed from misspelled 'allergene'; UNIQUE(lower(name))",
+          "id": "allergen_name_field",
+          "size": 63
+        }
+      ],
+      "comment": "shared master vocabulary, split out of the old per-ingredient 'allergene' rows",
+      "indices": [
+        {
+          "id": 0,
+          "name": "ux_allergen_lower_name",
+          "fields": ["name"],
+          "unique": true
+        }
+      ],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    },
+    {
+      "id": "ingredient_allergen_table_id",
+      "name": "ingredient_allergen",
+      "x": 1643,
+      "y": 400,
+      "locked": false,
+      "fields": [
+        {
+          "name": "ingredient_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "ingredient_allergen_ingredient_id",
+          "size": ""
+        },
+        {
+          "name": "allergen_id",
+          "type": "UUID",
+          "default": "",
+          "check": "",
+          "primary": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false,
+          "comment": "",
+          "id": "ingredient_allergen_allergen_id",
+          "size": ""
+        }
+      ],
+      "comment": "pure link table replacing the old 'allergene' table; composite PK (ingredient_id, allergen_id)",
+      "indices": [],
+      "uniqueConstraints": [],
+      "color": "#175e7a",
+      "collapsed": false
+    }
+  ],
+  "relationships": [
+    {
+      "startTableId": 3,
+      "startFieldId": 0,
+      "endTableId": 0,
+      "endFieldId": 0,
+      "name": "fk_workstep_recipe_id_recipe",
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade",
+      "id": 1,
+      "fields": [
+        {
+          "startFieldId": 0,
+          "endFieldId": 0
+        }
+      ]
+    },
+    {
+      "id": "2xlsDEImMM-Sh1C4oDPQP",
+      "name": "fk_recipe_ingredient_ingredient_id_ingredient",
+      "startTableId": "wqrl9YgAZe3q61B5xZ0t9",
+      "endTableId": "emRw5ZaC1Zx36UnptfHlR",
+      "fields": [
+        {
+          "startFieldId": "Lq3upa04KCLJhEk2-CLvT",
+          "endFieldId": "orv4ZW1W49sPhBpe8AH7Y"
+        }
+      ],
+      "startFieldId": "Lq3upa04KCLJhEk2-CLvT",
+      "endFieldId": "orv4ZW1W49sPhBpe8AH7Y",
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Restrict"
+    },
+    {
+      "id": "3PmbVJh4glSq4vvLm_kzK",
+      "name": "fk_recipe_ingredient_recipe_id_recipe",
+      "startTableId": "wqrl9YgAZe3q61B5xZ0t9",
+      "endTableId": 0,
+      "fields": [
+        {
+          "startFieldId": "recipe_ingredient_recipe_id",
+          "endFieldId": 0
+        }
+      ],
+      "startFieldId": "recipe_ingredient_recipe_id",
+      "endFieldId": 0,
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": "fk_recipe_tag_recipe_id",
+      "name": "fk_recipe_tag_recipe_id_recipe",
+      "startTableId": "recipe_tag_table_id",
+      "endTableId": 0,
+      "fields": [
+        {
+          "startFieldId": "recipe_tag_recipe_id",
+          "endFieldId": 0
+        }
+      ],
+      "startFieldId": "recipe_tag_recipe_id",
+      "endFieldId": 0,
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": "fk_recipe_tag_tag_id",
+      "name": "fk_recipe_tag_tag_id_tag",
+      "startTableId": "recipe_tag_table_id",
+      "endTableId": "tag_table_id",
+      "fields": [
+        {
+          "startFieldId": "recipe_tag_tag_id",
+          "endFieldId": "tag_id_field"
+        }
+      ],
+      "startFieldId": "recipe_tag_tag_id",
+      "endFieldId": "tag_id_field",
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": "fk_ingredient_allergen_ingredient_id",
+      "name": "fk_ingredient_allergen_ingredient_id_ingredient",
+      "startTableId": "ingredient_allergen_table_id",
+      "endTableId": "emRw5ZaC1Zx36UnptfHlR",
+      "fields": [
+        {
+          "startFieldId": "ingredient_allergen_ingredient_id",
+          "endFieldId": "orv4ZW1W49sPhBpe8AH7Y"
+        }
+      ],
+      "startFieldId": "ingredient_allergen_ingredient_id",
+      "endFieldId": "orv4ZW1W49sPhBpe8AH7Y",
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade"
+    },
+    {
+      "id": "fk_ingredient_allergen_allergen_id",
+      "name": "fk_ingredient_allergen_allergen_id_allergen",
+      "startTableId": "ingredient_allergen_table_id",
+      "endTableId": "allergen_table_id",
+      "fields": [
+        {
+          "startFieldId": "ingredient_allergen_allergen_id",
+          "endFieldId": "allergen_id_field"
+        }
+      ],
+      "startFieldId": "ingredient_allergen_allergen_id",
+      "endFieldId": "allergen_id_field",
+      "cardinality": "many_to_one",
+      "updateConstraint": "Cascade",
+      "deleteConstraint": "Cascade"
+    }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "database": "generic",
+  "types": [],
+  "title": "Library schema"
+}
