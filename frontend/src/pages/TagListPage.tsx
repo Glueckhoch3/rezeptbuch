@@ -74,7 +74,7 @@ export function TagListPage() {
             {data.items.map((tag) => (
               <li key={tag.id}>
                 <Link
-                  to={`/search?tag=${encodeURIComponent(tag.name)}`}
+                  to={`/?tag=${encodeURIComponent(tag.name)}`}
                   className="badge"
                 >
                   {tag.name}

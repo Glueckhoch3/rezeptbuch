@@ -82,7 +82,7 @@ export function AllergenListPage() {
             {data.items.map((allergen) => (
               <li key={allergen.id}>
                 <Link
-                  to={`/search?allergen=${encodeURIComponent(allergen.name)}`}
+                  to={`/?allergen=${encodeURIComponent(allergen.name)}`}
                   className="badge badge-allergen"
                 >
                   {allergen.name}

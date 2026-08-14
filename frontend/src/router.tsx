@@ -8,7 +8,6 @@ import { IngredientListPage } from './pages/IngredientListPage';
 import { IngredientDetailPage } from './pages/IngredientDetailPage';
 import { TagListPage } from './pages/TagListPage';
 import { AllergenListPage } from './pages/AllergenListPage';
-import { SearchPage } from './pages/SearchPage';
 
 // Central route table wiring the page-level screens into the app shell.
 export const router = createBrowserRouter([
@@ -24,7 +23,6 @@ export const router = createBrowserRouter([
       { path: 'ingredients/:id', element: <IngredientDetailPage /> },
       { path: 'tags', element: <TagListPage /> },
       { path: 'allergens', element: <AllergenListPage /> },
-      { path: 'search', element: <SearchPage /> },
     ],
   },
 ]);

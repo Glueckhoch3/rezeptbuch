@@ -21,37 +21,75 @@ body {
 }
 
 .app-header {
-  display: flex;
-  flex-wrap: wrap;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'burger title button';
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-sm) var(--space-md);
   padding: var(--space-md) var(--space-lg);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
+.app-header .button-primary {
+  grid-area: button;
+  justify-self: end;
+}
+
 .app-title {
+  grid-area: title;
+  justify-self: center;
   font-size: var(--font-size-lg);
   font-weight: 700;
   color: var(--color-primary);
   text-decoration: none;
 }
 
+.nav-burger {
+  grid-area: burger;
+  justify-self: start;
+  padding: 0.3rem 0.6rem;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
 .app-nav {
+  grid-column: 1 / -1;
+  display: none;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+}
+
+.app-nav.app-nav-open {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
-  order: 3;
-  flex-basis: 100%;
 }
 
 /* Custom properties can't be used inside @media conditions; keep this in
    sync with --bp-md in variables.css. */
 @media (min-width: 768px) {
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .nav-burger {
+    display: none;
+  }
+
   .app-nav {
-    order: 0;
-    flex-basis: auto;
+    display: flex !important;
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--space-md);
+    padding-top: var(--space-sm);
   }
 }
 
@@ -268,15 +306,45 @@ body {
 }
 
 .search-filters {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-md);
   margin-bottom: var(--space-lg);
 }
 
+.search-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-md);
+}
+
+.search-filters-text {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.search-filters-toggle {
+  position: relative;
+  white-space: nowrap;
+}
+
+.search-filters-badge {
+  margin-left: 0.4rem;
+}
+
+.search-filters-advanced {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 @media (min-width: 768px) {
-  .search-filters {
-    grid-template-columns: repeat(4, 1fr);
+  .search-filters-advanced {
+    grid-template-columns: repeat(3, 1fr);
     align-items: end;
   }
 }
